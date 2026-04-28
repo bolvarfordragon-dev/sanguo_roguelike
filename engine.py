@@ -24,6 +24,15 @@ from events.conditional import (
 )
 from progression import Progression
 from npc_schedule import get_npc_location, is_npc_active, is_faction_leader
+from skills import get_skill, SKILLS, can_learn_skill
+
+# NPC赠送技能
+NPC_GIFT_SKILLS = {
+    "刘备": {"skill_id": "brotherhood_oath", "type": "passive"},
+    "赵云": {"skill_id": "dragon_valor", "type": "active"},
+    "诸葛亮": {"skill_id": "longzhong_strategy", "type": "passive"},
+    "曹操": {"skill_id": "wei_strategy", "type": "passive"},
+}
 
 
 class SanguoEngine:
@@ -471,7 +480,15 @@ class SanguoEngine:
         if success:
             self.state.event_flags[f"已招募_{npc.name}"] = True
             self.state.player.modify_relation(npc.name, 20)
-            return True, f"\n{npc.name}点头应允，愿意加入麾下！\n（{npc.name}已加入队伍，好感度+20）"
+            # NPC赠送技能
+            gift = NPC_GIFT_SKILLS.get(npc.name)
+            gift_msg = ""
+            if gift:
+                skill = get_skill(gift["skill_id"])
+                if skill:
+                    self.state.player.add_skill(gift["skill_id"])
+                    gift_msg = f"\n「你我共事，我有一技相赠——」\n「此乃'{skill.name}'，愿你善用之。」\n（获得技能：{skill.name}）"
+            return True, f"\n{npc.name}点头应允，愿意加入麾下！\n（{npc.name}已加入队伍，好感度+20）{gift_msg}"
         else:
             # 失败好感度变化
             penalty = -10 if strategy == "coerce" else -5
@@ -532,6 +549,80 @@ class SanguoEngine:
             if c["id"] == choice_id:
                 return c["effect"](self.state)
         return None
+
+    def show_death_screen(self, fragments_earned, months_survived):
+        """显示死亡界面（遗产商店）"""
+        from skills import SKILLS, can_learn_skill, get_skill
+
+        p = self.state.player
+        p.inheritance_fragments += fragments_earned
+
+        print(f"""
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💀 你已陨于乱世
+
+存活时间：{self.state.year - 184}年{months_survived % 12}月
+获得传承碎片：+{fragments_earned}枚
+当前持有：{p.inheritance_fragments}枚
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📦 传承商店
+
+【传承主动技能】
+""")
+
+        # 显示可购买技能
+        active_skills = []
+        passive_skills = []
+        for sid, skill in SKILLS.items():
+            if skill.cost == 0:  # 跳过NPC赠送技能
+                continue
+            can_learn, reason = can_learn_skill(sid, p)
+            if skill.skill_type == "active":
+                active_skills.append((sid, skill, can_learn, reason))
+            else:
+                passive_skills.append((sid, skill, can_learn, reason))
+
+        idx = 1
+        choices = []
+        for sid, skill, can_learn, reason in active_skills:
+            if can_learn:
+                print(f"  {idx}. {skill.name} - {skill.cost}碎片 - {skill.desc}")
+                choices.append(sid)
+                idx += 1
+
+        print(f"\n【传承被动技能】")
+        for sid, skill, can_learn, reason in passive_skills:
+            if can_learn:
+                print(f"  {idx}. {skill.name} - {skill.cost}碎片 - {skill.desc}")
+                choices.append(sid)
+                idx += 1
+
+        print(f"""
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+输入数字购买技能，输入 0 直接开始新游戏
+当前碎片：{p.inheritance_fragments}枚
+> """, end="")
+
+        try:
+            cmd = input().strip()
+            if cmd.isdigit():
+                choice_idx = int(cmd)
+                if choice_idx > 0 and choice_idx <= len(choices):
+                    skill_id = choices[choice_idx - 1]
+                    skill = get_skill(skill_id)
+                    if skill and p.inheritance_fragments >= skill.cost:
+                        p.inheritance_fragments -= skill.cost
+                        p.add_skill(skill_id)
+                        print(f"✅ 习得技能：{skill.name}！剩余碎片：{p.inheritance_fragments}枚")
+                    else:
+                        print("碎片不足！")
+                # 输入0或无效 -> 开始新游戏
+        except (ValueError, EOFError):
+            pass
+
+        # 开始新游戏
+        self.new_game()
 
     def resolve_ending(self, ending_type):
         """处理结局"""
@@ -648,6 +739,11 @@ def main():
                 engine.show_status()
             elif base_cmd == "tick":
                 result = engine.tick()
+                if result is None and engine.state.is_game_over():
+                    months = engine.state.get_elapsed_months()
+                    fragments = 5 + ((months + 5) // 6)
+                    engine.show_death_screen(fragments, months)
+                    continue
                 if result:
                     engine.show_status()
                     if result.get("mandatory"):
