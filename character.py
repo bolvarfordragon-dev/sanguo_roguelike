@@ -37,6 +37,9 @@ class Character:
         self.active_skills = []   # 战斗中可使用的技能
         self.passive_skills = []  # 永久生效的被动
 
+        # 传承碎片
+        self.inheritance_fragments = 0
+
         # 状态效果
         self.effects = []  # e.g. ["中毒", "重伤"]
 
@@ -48,8 +51,45 @@ class Character:
         given = ["羽", "飞", "超", "义", "勇", "忠", "德", "仁", "威", "杰"]
         return random.choice(surnames) + random.choice(given)
 
+    def add_skill(self, skill_id):
+        """添加技能到对应列表（被动或主动）"""
+        from skills import get_skill
+        skill = get_skill(skill_id)
+        if not skill:
+            return
+        if skill.skill_type == "active":
+            if skill_id not in self.active_skills:
+                self.active_skills.append(skill_id)
+        elif skill.skill_type == "passive":
+            if skill_id not in self.passive_skills:
+                self.passive_skills.append(skill_id)
+
+    def has_skill(self, skill_id):
+        """检查是否拥有某技能"""
+        return skill_id in self.active_skills or skill_id in self.passive_skills
+
+    def get_effective_stat(self, stat):
+        """获取属性（含被动技能加成）"""
+        base = self.stats.get(stat, 0)
+
+        # last_stand: HP<20时，武力+10
+        if "last_stand" in self.passive_skills and stat == "武" and self.hp < 20:
+            base += 10
+
+        # longzhong_strategy: 智谋+5
+        if "longzhong_strategy" in self.passive_skills and stat == "智":
+            base += 5
+
+        # wei_strategy: 名望+10
+        if "wei_strategy" in self.passive_skills and stat == "名":
+            base += 10
+
+        # brotherhood_oath: 好感度变化+50%（通过modify_relation处理，不在这里）
+
+        return base
+
     def get_stat(self, stat):
-        return self.stats.get(stat, 0)
+        return self.get_effective_stat(stat)
 
     def modify_stat(self, stat, delta):
         self.stats[stat] = max(1, min(100, self.stats.get(stat, 0) + delta))
@@ -113,6 +153,9 @@ class Character:
             "hp": self.hp,
             "exp": self.exp,
             "skills": list(self.skills),
+            "active_skills": list(self.active_skills),
+            "passive_skills": list(self.passive_skills),
+            "inheritance_fragments": self.inheritance_fragments,
             "effects": list(self.effects),
             "relations": dict(self.relations),
             "gold": self.gold,
@@ -130,6 +173,9 @@ class Character:
         c.hp = data.get("hp", 100)
         c.exp = data.get("exp", 0)
         c.skills = list(data.get("skills", []))
+        c.active_skills = list(data.get("active_skills", []))
+        c.passive_skills = list(data.get("passive_skills", []))
+        c.inheritance_fragments = data.get("inheritance_fragments", 0)
         c.effects = list(data.get("effects", []))
         c.relations = dict(data.get("relations", {}))
         c.gold = data.get("gold", config.INITIAL_GOLD)
