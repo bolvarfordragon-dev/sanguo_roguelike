@@ -146,29 +146,6 @@ def get_default_conditional_events():
     """获取默认的条件事件列表"""
     events = []
 
-    # 固定NPC遭遇事件
-    for npc_name in ["关羽", "张飞", "刘备", "曹操", "孙坚", "赵云", "诸葛亮", "吕布"]:
-        if npc_name in ["关羽", "张飞", "刘备"]:
-            loc = "涿郡"
-        elif npc_name == "曹操":
-            loc = "陈留"
-        elif npc_name == "孙坚":
-            loc = "长沙"
-        elif npc_name == "孙策":
-            loc = "吴郡"
-        elif npc_name == "周瑜":
-            loc = "吴郡"
-        elif npc_name == "赵云":
-            loc = "邺城"
-        elif npc_name == "诸葛亮":
-            loc = "南阳"
-        elif npc_name == "吕布":
-            loc = "并州"
-        else:
-            loc = None
-
-        events.append(meet_npc_event(npc_name, loc))
-
     # 随机遭遇
     for enc_type in ["流民", "山贼", "散兵", "商队", "游侠"]:
         events.append(random_encounter_event(enc_type, min_year=184, max_year=220))

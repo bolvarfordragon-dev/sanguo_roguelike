@@ -142,6 +142,17 @@ def format_event_intro(event_name, time_str):
     return f"\n{'━'*40}\n📜 {event_name}\n{time_str}\n{'━'*40}\n"
 
 
+def narrate_npc_encounter(npc):
+    """生成 NPC 遭遇叙事"""
+    templates = [
+        f"你正行走间，忽见一人迎面而来——正是{npc.name}（{npc.rank}）。",
+        f"街道之上，一道身影引起你的注意。细看之下，竟是{npc.name}！",
+        f"城中偶遇，{npc.name}正立于街边，打量着往来的行人。",
+        f"你行至{npc.location}，忽闻有人唤你姓名——竟是{npc.name}在此！",
+    ]
+    return random.choice(templates)
+
+
 def format_choice(options):
     """格式化选项列表"""
     lines = ["\n[请选择]"]
