@@ -23,6 +23,7 @@ from events.conditional import (
     taoyuan_oath_event, huarong_road_event, three_visits_to_zhuge_event
 )
 from progression import Progression
+from npc_schedule import get_npc_location, is_npc_active, is_faction_leader
 
 
 class SanguoEngine:
@@ -33,6 +34,7 @@ class SanguoEngine:
         self.progression = None
         self.running = False
         self.pending_combat = None   # 待处理的战斗
+        self.pending_npc_encounter = None  # 待处理的NPC遭遇
         self.pending_choice = None   # 待处理的选择
         self._init_progression()
 
@@ -264,14 +266,73 @@ class SanguoEngine:
         # 自然恢复
         self._natural_recovery()
 
+        # ============ NPC 遭遇检查 ============
+        encounter = self._check_npc_encounter()
+
         if self.state.is_game_over():
             self.running = False
             return None
+
+        if encounter:
+            self.pending_npc_encounter = encounter
+            return {
+                "time": f"{year}年{month}月",
+                "mandatory": mandatory_result,
+                "conditionals": conditional_results,
+                "npc_encounter": encounter,
+            }
 
         return {
             "time": f"{year}年{month}月",
             "mandatory": mandatory_result,
             "conditionals": conditional_results,
+        }
+
+        return {
+            "time": f"{year}年{month}月",
+            "mandatory": mandatory_result,
+            "conditionals": conditional_results,
+        }
+
+    def _check_npc_encounter(self):
+        """检查是否触发 NPC 遭遇"""
+        if not self.state or not self.state.player:
+            return None
+
+        current_year = self.state.year
+        player_location = self.state.player.location
+
+        candidates = []
+        for npc_name, npc in self.state.npcs.items():
+            if npc.hp <= 0:
+                continue
+            if not is_npc_active(npc_name, current_year):
+                continue
+            if self.state.event_flags.get(f"已招募_{npc_name}", False):
+                continue
+
+            # 检查 CD（同一NPC 3个月内不重复触发）
+            cd_key = f"encounter_cd_{npc_name}"
+            cd_year = self.state.event_flags.get(cd_key)
+            if cd_year == current_year:
+                continue
+
+            # 获取 NPC 当前位置
+            npc_loc = get_npc_location(npc_name, current_year)
+            if npc_loc != player_location:
+                continue
+
+            candidates.append((npc_name, npc))
+
+        if not candidates:
+            return None
+
+        # 随机选择一个 NPC 遭遇
+        npc_name, npc = random.choice(candidates)
+        return {
+            "type": "npc_encounter",
+            "npc_name": npc_name,
+            "npc": npc,
         }
 
     def _natural_recovery(self):
@@ -300,6 +361,170 @@ class SanguoEngine:
         print(f"📅 {time_str} | 📍 {p.location}")
         print(format_character_info(p))
         print(f"{'─'*40}")
+
+    def handle_npc_encounter(self, choice):
+        """处理 NPC 遭遇对话选项"""
+        if not self.pending_npc_encounter:
+            return
+        npc = self.pending_npc_encounter["npc"]
+        npc_name = self.pending_npc_encounter["npc_name"]
+
+        if choice == "7":
+            # 离开，设置 CD
+            self.state.event_flags[f"encounter_cd_{npc_name}"] = self.state.year
+            self.pending_npc_encounter = None
+            return
+
+        elif choice == "1":  # 诚心相邀
+            success, msg = self._try_recruit_npc(npc, "sincere")
+            print(msg)
+            if success:
+                self.state.event_flags[f"encounter_cd_{npc_name}"] = self.state.year
+
+        elif choice == "2":  # 以利诱之
+            if self.state.player.gold < 30:
+                print("金钱不足！")
+                return
+            success, msg = self._try_recruit_npc(npc, "bribe")
+            print(msg)
+            if success:
+                self.state.event_flags[f"encounter_cd_{npc_name}"] = self.state.year
+
+        elif choice == "3":  # 晓以大义
+            if self.state.player.get_stat("名") < 50:
+                print("名望不足，无法以此说动对方！")
+                return
+            success, msg = self._try_recruit_npc(npc, "righteous")
+            print(msg)
+            if success:
+                self.state.event_flags[f"encounter_cd_{npc_name}"] = self.state.year
+
+        elif choice == "4":  # 威逼利诱
+            if self.state.player.gold < 20:
+                print("金钱不足！")
+                return
+            success, msg = self._try_recruit_npc(npc, "coerce")
+            print(msg)
+            if success:
+                self.state.event_flags[f"encounter_cd_{npc_name}"] = self.state.year
+
+        elif choice == "5":  # 交谈
+            info = self._get_npc_intel(npc)
+            print(info)
+
+        elif choice == "6":  # 索取情报
+            intel = self._get_npc_intel(npc, detailed=True)
+            print(intel)
+
+        else:
+            print("无效选择，请输入 1-7。")
+
+        # 清理 pending（不论成功失败都清理，除非玩家还想继续）
+        # （遭遇一次就结束，玩家可以下次再遭遇）
+        self.pending_npc_encounter = None
+
+    def _try_recruit_npc(self, npc, strategy):
+        """
+        尝试招募 NPC，返回 (success: bool, message: str)
+        """
+        # 已招募检查
+        if self.state.event_flags.get(f"已招募_{npc.name}", False):
+            return False, f"{npc.name}已在你麾下。"
+
+        # 阵营领袖检查
+        leader_mod = -0.40 if is_faction_leader(npc.name) else 0.0
+
+        # 基础成功率
+        base_rate = 0.50
+
+        # 好感度修正
+        rel = self.state.player.get_relation(npc.name)
+        rel_mod = (rel / 100) * 0.20
+
+        # 魅力修正
+        charisma_mod = (self.state.player.get_stat("魅") - 50) / 500
+
+        # 对话策略加成
+        strategy_mods = {
+            "sincere": 0.10,
+            "bribe": 0.05,
+            "righteous": 0.05,
+            "coerce": -0.20,  # 强行挽留反而降低成功率
+        }
+        strategy_mod = strategy_mods.get(strategy, 0.0)
+
+        # 消耗处理
+        cost = 0
+        if strategy == "bribe":
+            cost = 30
+        elif strategy == "coerce":
+            cost = 20
+
+        if cost > 0:
+            self.state.player.gold -= cost
+
+        final_rate = base_rate + rel_mod + charisma_mod + leader_mod + strategy_mod
+        final_rate = max(0.05, min(0.95, final_rate))
+
+        success = random.random() < final_rate
+
+        if success:
+            self.state.event_flags[f"已招募_{npc.name}"] = True
+            self.state.player.modify_relation(npc.name, 20)
+            return True, f"\n{npc.name}点头应允，愿意加入麾下！\n（{npc.name}已加入队伍，好感度+20）"
+        else:
+            # 失败好感度变化
+            penalty = -10 if strategy == "coerce" else -5
+            self.state.player.modify_relation(npc.name, penalty)
+            msgs = {
+                "sincere": f"\n{npc.name}摇头拒绝：「容我三思。」",
+                "bribe": f"\n{npc.name}冷笑：「这点钱想收买我？」\n（金-{cost}，好感度{penalty}）",
+                "righteous": f"\n{npc.name}沉吟不语，最终摇头离去。",
+                "coerce": f"\n{npc.name}怒道：「你当我是什么人！」拂袖而去。\n（金-{cost}，好感度{penalty}）",
+            }
+            return False, msgs.get(strategy, "")
+
+    def _get_npc_intel(self, npc, detailed=False):
+        """获取 NPC 提供的情报"""
+        intel_list = []
+        current_year = self.state.year
+
+        for other_name, other_npc in self.state.npcs.items():
+            if other_npc.hp <= 0 or other_name == npc.name:
+                continue
+            if not is_npc_active(other_name, current_year):
+                continue
+            loc = get_npc_location(other_name, current_year)
+            if loc:
+                intel_list.append(f"{other_name}目前在{loc}")
+
+        if not intel_list:
+            return f"\n{npc.name}告诉你：「天下纷乱，我亦不知他人下落。」"
+
+        info = [f"\n{npc.name}告诉你："]
+        for i, intel in enumerate(intel_list[:6], 1):
+            info.append(f"  {i}. {intel}")
+        return "\n".join(info)
+
+    def format_npc_encounter_options(self, npc):
+        """格式化 NPC 遭遇选项"""
+        is_leader = is_faction_leader(npc.name)
+        leader_note = "（招募困难）" if is_leader else ""
+
+        options = f"""
+{npc.name}（{npc.rank}）打量着你，不知是敌是友。
+{leader_note}
+
+请选择行动：
+  1. [诚心相邀] 表达敬意，邀其{'共举大事' if is_leader else '加入'}
+  2. [以利诱之] 赠金三十，邀其加入（需30金）
+  3. [晓以大义] 以天下苍生为由（需名望≥50）
+  4. [威逼利诱] 软硬兼施（需20金，有风险）
+  5. [交谈] 与{npc.name}交谈
+  6. [索取情报] 请其透露天下局势
+  7. [离开] 拱手作别
+"""
+        return options
 
     def handle_choice(self, choice_id, choices):
         """处理选择"""
@@ -385,6 +610,19 @@ def main():
                 elif cmd in ["q", "quit", "escape"]:
                     print("你决定撤出战斗……")
                     engine.pending_combat = None
+                continue
+
+            # 如果有 NPC 遭遇待处理
+            if engine.pending_npc_encounter:
+                encounter = engine.pending_npc_encounter
+                npc = encounter["npc"]
+                print(f"\n🎭 遭遇 {npc.name}（{npc.rank}）！")
+                print(engine.format_npc_encounter_options(npc))
+                cmd = input("> ").strip()
+                engine.handle_npc_encounter(cmd)
+                if engine.pending_npc_encounter is None:
+                    # 遭遇已处理，显示状态
+                    engine.show_status()
                 continue
 
             cmd = input("\n> ").strip()
