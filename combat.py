@@ -64,8 +64,41 @@ class CombatSession:
     def add_narrative(self, text):
         self.narrative_log.append(text)
 
-    def simulate(self, player_action=None):
+    def simulate(self, player_action=None, active_skill=None):
         """执行战斗模拟，返回结果"""
+        # ===== 主动技能效果 =====
+        skill_damage_mod = 1.0
+        skill_crit_bonus = 0
+        skill_risk_mod = 1.0
+        skill_winrate_mod = 0.0
+        skill_morale_mod = 0
+
+        if active_skill:
+            if active_skill == "sneak_attack":
+                # 暗箭：必定暴击
+                skill_crit_bonus = 100  # 100%额外暴击率
+            elif active_skill == "feint":
+                # 佯攻：-10%胜率，但必定先手（已通过先攻逻辑处理）
+                skill_winrate_mod = -0.10
+            elif active_skill == "rally_cry":
+                # 呐喊：己方士气+15
+                skill_morale_mod = 15
+                self.ctx["attacker_morale"] = min(100, self.ctx.get("attacker_morale", 100) + 15)
+            elif active_skill == "counter_stance":
+                # 反制：承受伤害-30%
+                skill_risk_mod = 0.7
+            elif active_skill == "decisive_strike":
+                # 绝技：伤害x1.5，暴击率+20%
+                skill_damage_mod = 1.5
+                skill_crit_bonus = 20
+            elif active_skill == "reckless_charge":
+                # 破釜沉舟：伤害x2，承受伤害x1.5
+                skill_damage_mod = 2.0
+                skill_risk_mod = 1.5
+            elif active_skill == "dragon_valor":
+                # 龙胆：HP>50时武力+15（通过get_effective_stat处理）
+                pass
+
         action_info = self._get_action_info(player_action)
         atk_power = self._calc_power(self.attacker, side="attacker")
         def_power = self._calc_power(self.defender, side="defender")
@@ -76,7 +109,7 @@ class CombatSession:
         base_win_rate = max(0.05, min(0.95, base_win_rate))
 
         # 动作修正
-        win_rate = base_win_rate + action_info.get("win_rate_mod", 0)
+        win_rate = base_win_rate + action_info.get("win_rate_mod", 0) + skill_winrate_mod
         win_rate = max(0.05, min(0.95, win_rate))
 
         # ============ 掷骰子 ============
@@ -85,7 +118,7 @@ class CombatSession:
         effective_roll = dice / 100 + luck_mod
 
         # 暴击判定
-        is_crit = dice == 100 or (dice >= 95 and self.attacker.get_stat("运") > 80)
+        is_crit = dice == 100 or (dice >= (95 - skill_crit_bonus) and self.attacker.get_stat("运") > 80)
         is_fumble = dice == 1 or (dice <= 5 and self.defender.get_stat("运") > 80)
 
         # 胜负判定
@@ -112,11 +145,11 @@ class CombatSession:
             self.attacker_damage = int(atk_troops * 0.1)
             self.defender_damage = int(def_troops * 0.05)
         elif player_won:
-            self.defender_damage = int(def_troops * (0.35 + random.random() * 0.25) * damage_mod)
-            self.attacker_damage = int(atk_troops * (0.08 + random.random() * 0.12) * risk_mod)
+            self.defender_damage = int(def_troops * (0.35 + random.random() * 0.25) * damage_mod * skill_damage_mod)
+            self.attacker_damage = int(atk_troops * (0.08 + random.random() * 0.12) * risk_mod * skill_risk_mod)
         else:
-            self.attacker_damage = int(atk_troops * (0.30 + random.random() * 0.25) * risk_mod)
-            self.defender_damage = int(def_troops * (0.10 + random.random() * 0.15) * damage_mod)
+            self.attacker_damage = int(atk_troops * (0.30 + random.random() * 0.25) * risk_mod * skill_risk_mod)
+            self.defender_damage = int(def_troops * (0.10 + random.random() * 0.15) * damage_mod * skill_damage_mod)
 
         self.winner = self.attacker if player_won else self.defender
         self.loser = self.defender if player_won else self.attacker
