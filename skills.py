@@ -180,12 +180,12 @@ def can_learn_skill(skill_id, player):
         return False, f"技能 {skill_id} 不存在"
 
     # 检查是否已学会
-    if skill_id in (player.learned_skills or []):
+    if skill_id in (player.active_skills + player.passive_skills or []):
         return False, f"已学会 [{skill.name}]"
 
     # 检查碎片是否足够（cost=0的NPC赠送技能不消耗碎片）
-    if skill.cost > 0 and (player.fragments or 0) < skill.cost:
-        return False, f"碎片不足：需要 {skill.cost}，当前 {player.fragments}"
+    if skill.cost > 0 and (player.inheritance_fragments or 0) < skill.cost:
+        return False, f"碎片不足：需要 {skill.cost}，当前 {player.inheritance_fragments}"
 
     # 检查属性要求
     if skill.stat_req:
@@ -200,7 +200,7 @@ def can_learn_skill(skill_id, player):
 
     # 检查前置技能
     if skill.prereq:
-        if skill.prereq not in (player.learned_skills or []):
+        if skill.prereq not in (player.active_skills + player.passive_skills or []):
             prereq_skill = SKILLS.get(skill.prereq)
             prereq_name = prereq_skill.name if prereq_skill else skill.prereq
             return False, f"需要先学会 [{prereq_name}]"
@@ -217,7 +217,7 @@ def get_available_skills_for_player(player, fragments):
     available = []
     for skill_id, skill in SKILLS.items():
         # 跳过已学会的
-        if skill_id in (player.learned_skills or []):
+        if skill_id in (player.active_skills + player.passive_skills or []):
             continue
 
         # 检查碎片是否足够（cost=0视为免费）
@@ -235,7 +235,7 @@ def get_available_skills_for_player(player, fragments):
             continue
 
         # 检查前置技能
-        if skill.prereq and skill.prereq not in (player.learned_skills or []):
+        if skill.prereq and skill.prereq not in (player.active_skills + player.passive_skills or []):
             continue
 
         available.append(skill)
