@@ -616,7 +616,8 @@ def main():
             if engine.pending_npc_encounter:
                 encounter = engine.pending_npc_encounter
                 npc = encounter["npc"]
-                print(f"\n🎭 遭遇 {npc.name}（{npc.rank}）！")
+                from narrative import narrate_npc_encounter
+                print(f"\n🎭 {narrate_npc_encounter(npc)}")
                 print(engine.format_npc_encounter_options(npc))
                 cmd = input("> ").strip()
                 engine.handle_npc_encounter(cmd)
