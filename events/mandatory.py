@@ -143,10 +143,11 @@ def _effect_yellow_turbans(state):
     """黄巾起义效果"""
     state.global_flags["黄巾之乱"] = True
     state.event_flags["黄巾起义触发"] = True
-    # 给玩家一定初始经验/名望
     if state.player:
         state.player.exp += 20
         state.player.modify_stat("名", 5)
+        state.player.inheritance_fragments += 2
+        print("（获得传承碎片 +2）")
 
 
 def _effect_dong_zhuo_enters(state):
@@ -181,13 +182,19 @@ def _effect_guandu(state):
     state.global_flags["官渡之战"] = True
     state.event_flags["官渡之战触发"] = True
     if "袁绍" in state.npcs:
-        state.npcs["袁绍"].hp = 0  # 袁绍败亡
+        state.npcs["袁绍"].hp = 0
+    if state.player:
+        state.player.inheritance_fragments += 5
+        print("（获得传承碎片 +5）")
 
 
 def _effect_chibi(state):
     """赤壁之战效果"""
     state.global_flags["赤壁之战"] = True
     state.event_flags["赤壁之战触发"] = True
+    if state.player:
+        state.player.inheritance_fragments += 8
+        print("（获得传承碎片 +8）")
 
 
 def _effect_three_kingdoms(state):
@@ -198,6 +205,10 @@ def _effect_three_kingdoms(state):
 
 def _effect_yiling(state):
     """夷陵之战效果"""
+    state.global_flags["夷陵之战"] = True
+    if state.player:
+        state.player.inheritance_fragments += 5
+        print("（获得传承碎片 +5）")
     state.global_flags["夷陵之战"] = True
 
 

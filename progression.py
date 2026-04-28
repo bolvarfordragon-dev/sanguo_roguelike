@@ -20,7 +20,7 @@ class Progression:
                 return json.load(f)
         return {
             "unlocked_heroes": [],      # 解锁可扮演的武将
-            "unlocked_skills": [],      # 解锁的传承技能
+            "unlocked_inheritance_skills": [],  # 永久解锁的传承技能
             "unlocked_talents": [],     # 解锁的天赋
             "unlocked_artifacts": [],   # 解锁的图鉴
             "史籍": [],                  # 已解锁的史籍
