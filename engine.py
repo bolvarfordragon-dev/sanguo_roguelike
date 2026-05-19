@@ -245,13 +245,14 @@ class SanguoEngine:
         print(f"📦 市集易货：你付出{FOOD_PRICE}金，买入{FOOD_AMOUNT}粮，当前金{p.gold}粮{p.food}。")
 
     def show_intel(self, cost=20):
-        """花钱打听消息，获得所有重要NPC的当前位置"""
+        """花钱打听消息，获得所有重要NPC的当前位置和路线"""
         p = self.state.player
         if p.gold < cost:
             print(f"盘缠不足，打听消息需要{cost}金，你只有{p.gold}金。")
             return
         p.gold -= cost
         current_year = self.state.year
+        from world import find_path
         print(f"""
 {'─'*40}
 📰 江湖消息（花费{cost}金）
@@ -266,9 +267,19 @@ class SanguoEngine:
             type_icon = '⚔️' if npc_type == '武将' else ('📚' if npc_type == '文官' else '👑')
             leader_tag = ' [阵营领袖]' if is_faction_leader(npc_name) else ''
             recruited_tag = ' ✅已招募' if self.state.event_flags.get(f'已招募_{npc_name}', False) else ''
-            print(f"  {type_icon} {npc_name} — 现身于「{loc}」{leader_tag}{recruited_tag}")
+
+            if loc == p.location:
+                location_hint = f"📍当前所在"
+            else:
+                path = find_path(p.location, loc)
+                if path and len(path) <= 4:
+                    hops = "→".join(path[1:])
+                    location_hint = f"→{hops}（{len(path)-1}步）"
+                else:
+                    location_hint = f"「{loc}」"
+
+            print(f"  {type_icon} {npc_name} {location_hint}{leader_tag}{recruited_tag}")
         print()
-        print("（移动至该城市可尝试遭遇）")
 
     def move_to(self, target_city):
         """移动到某城市"""

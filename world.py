@@ -235,6 +235,30 @@ def get_current_region(city):
     return None
 
 
+
+from collections import deque
+
+def find_path(from_city, to_city):
+    """BFS找最短路径，返回城市列表或None"""
+    if from_city == to_city:
+        return [from_city]
+    if to_city not in CITY_CONNECTIONS:
+        return None
+
+    queue = deque([(from_city, [from_city])])
+    visited = {from_city}
+
+    while queue:
+        current, path = queue.popleft()
+        for neighbor in CITY_CONNECTIONS.get(current, []):
+            if neighbor == to_city:
+                return path + [neighbor]
+            if neighbor not in visited:
+                visited.add(neighbor)
+                queue.append((neighbor, path + [neighbor]))
+    return None
+
+
 def get_adjacent_cities(city):
     """获取相邻城市列表"""
     return CITY_CONNECTIONS.get(city, [])
