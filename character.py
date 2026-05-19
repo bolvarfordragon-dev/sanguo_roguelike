@@ -191,12 +191,13 @@ class Character:
 class NPC(Character):
     """非玩家角色"""
 
-    def __init__(self, name, preset_stats, rank="", location="", ai_type="normal"):
+    def __init__(self, name, preset_stats, rank="", location="", ai_type="normal", npc_type="武将"):
         super().__init__(name=name, is_player=False)
         self.stats = dict(preset_stats)
         self.rank = rank or "未知"
         self.location = location or "未知"
         self.ai_type = ai_type  # normal, aggressive, friendly
+        self.npc_type = npc_type  # 文官 / 武将 / 魅力型
 
     @classmethod
     def from_preset(cls, preset_name):
@@ -207,29 +208,37 @@ class NPC(Character):
             preset_stats=presets.get("stats", {"武": 50, "智": 30, "名": 20, "魅": 30, "运": 30}),
             rank=presets.get("rank", "武将"),
             location=presets.get("location", "未知"),
+            npc_type=presets.get("type", "武将"),
         )
+
+    def get_stat(self, stat):
+        return self.stats.get(stat, 30)
 
     def to_dict(self):
         d = super().to_dict()
         d["ai_type"] = self.ai_type
+        d["npc_type"] = self.npc_type
         return d
 
 
 # ============ NPC预设（历史武将模板）===========
 NPC_PRESETS = {
-    "关羽": {"stats": {"武": 98, "智": 75, "名": 90, "魅": 80, "运": 70}, "rank": "校尉", "location": "涿郡"},
-    "张飞": {"stats": {"武": 95, "智": 35, "名": 60, "魅": 25, "运": 50}, "rank": "伍长", "location": "涿郡"},
-    "刘备": {"stats": {"武": 55, "智": 70, "名": 95, "魅": 95, "运": 80}, "rank": "安喜尉", "location": "涿郡"},
-    "曹操": {"stats": {"武": 75, "智": 90, "名": 88, "魅": 85, "运": 85}, "rank": "典军校尉", "location": "陈留"},
-    "孙坚": {"stats": {"武": 90, "智": 60, "名": 75, "魅": 60, "运": 65}, "rank": "长沙太守", "location": "长沙"},
-    "孙策": {"stats": {"武": 93, "智": 65, "名": 80, "魅": 75, "运": 70}, "rank": "校尉", "location": "吴郡"},
-    "周瑜": {"stats": {"武": 60, "智": 95, "名": 85, "魅": 80, "运": 60}, "rank": "建威中郎将", "location": "吴郡"},
-    "赵云": {"stats": {"武": 94, "智": 70, "名": 75, "魅": 65, "运": 85}, "rank": "牙门将", "location": "邺城"},
-    "诸葛亮": {"stats": {"武": 30, "智": 99, "名": 95, "魅": 90, "运": 90}, "rank": "隆中隐士", "location": "南阳"},
-    "吕布": {"stats": {"武": 100, "智": 40, "名": 60, "魅": 45, "运": 40}, "rank": "主薄", "location": "并州"},
-    "华雄": {"stats": {"武": 88, "智": 30, "名": 40, "魅": 30, "运": 35}, "rank": "都督", "location": "汜水关"},
-    "颜良": {"stats": {"武": 90, "智": 35, "名": 45, "魅": 35, "运": 40}, "rank": "上将", "location": "白马"},
-    "文丑": {"stats": {"武": 89, "智": 35, "名": 42, "魅": 32, "运": 38}, "rank": "上将", "location": "白马"},
-    "袁绍": {"stats": {"武": 60, "智": 65, "名": 80, "魅": 70, "运": 55}, "rank": "盟主", "location": "邺城"},
-    "董卓": {"stats": {"武": 82, "智": 55, "名": 50, "魅": 60, "运": 45}, "rank": "太师", "location": "洛阳"},
+    # ========== 武将 ==========
+    "关羽": {"stats": {"武": 98, "智": 75, "名": 90, "魅": 80, "运": 70}, "rank": "校尉", "location": "涿郡", "type": "武将"},
+    "张飞": {"stats": {"武": 95, "智": 35, "名": 60, "魅": 25, "运": 50}, "rank": "伍长", "location": "涿郡", "type": "武将"},
+    "赵云": {"stats": {"武": 94, "智": 70, "名": 75, "魅": 65, "运": 85}, "rank": "牙门将", "location": "邺城", "type": "武将"},
+    "吕布": {"stats": {"武": 100, "智": 40, "名": 60, "魅": 45, "运": 40}, "rank": "主薄", "location": "并州", "type": "武将"},
+    "华雄": {"stats": {"武": 88, "智": 30, "名": 40, "魅": 30, "运": 35}, "rank": "都督", "location": "汜水关", "type": "武将"},
+    "颜良": {"stats": {"武": 90, "智": 35, "名": 45, "魅": 35, "运": 40}, "rank": "上将", "location": "白马", "type": "武将"},
+    "文丑": {"stats": {"武": 89, "智": 35, "名": 42, "魅": 32, "运": 38}, "rank": "上将", "location": "白马", "type": "武将"},
+    "孙坚": {"stats": {"武": 90, "智": 60, "名": 75, "魅": 60, "运": 65}, "rank": "长沙太守", "location": "长沙", "type": "武将"},
+    "孙策": {"stats": {"武": 93, "智": 65, "名": 80, "魅": 75, "运": 70}, "rank": "校尉", "location": "吴郡", "type": "武将"},
+    "董卓": {"stats": {"武": 82, "智": 55, "名": 50, "魅": 60, "运": 45}, "rank": "太师", "location": "洛阳", "type": "武将"},
+    # ========== 文官 ==========
+    "周瑜": {"stats": {"武": 60, "智": 95, "名": 85, "魅": 80, "运": 60}, "rank": "建威中郎将", "location": "吴郡", "type": "文官"},
+    "诸葛亮": {"stats": {"武": 30, "智": 99, "名": 95, "魅": 90, "运": 90}, "rank": "隆中隐士", "location": "南阳", "type": "文官"},
+    "袁绍": {"stats": {"武": 60, "智": 65, "名": 80, "魅": 70, "运": 55}, "rank": "盟主", "location": "邺城", "type": "文官"},
+    # ========== 魅力型 ==========
+    "刘备": {"stats": {"武": 55, "智": 70, "名": 95, "魅": 95, "运": 80}, "rank": "安喜尉", "location": "涿郡", "type": "魅力型"},
+    "曹操": {"stats": {"武": 75, "智": 90, "名": 88, "魅": 85, "运": 85}, "rank": "典军校尉", "location": "陈留", "type": "魅力型"},
 }

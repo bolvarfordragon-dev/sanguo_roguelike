@@ -670,9 +670,15 @@ class SanguoEngine:
         # ========== 玩家魅力修正（50基准，100满魅力 +15%）==========
         charisma_mod = max(-0.20, (p.get_stat("魅") - 50) / 50 * 0.15)
 
-        # ========== NPC 属性门槛（属性越高越看不上你，每个属性-3%）==========
+        # ========== NPC 属性门槛（按类型：文官-智魅，武将-武魅，魅力型-只魅）==========
+        stat_map = {
+            "文官": ["智", "魅"],
+            "武将": ["武", "魅"],
+            "魅力型": ["魅"],
+        }
+        relevant_stats = stat_map.get(getattr(npc, 'npc_type', '武将'), ["武", "魅"])
         npc_stat_mod = 0
-        for stat in ["魅", "武", "智"]:
+        for stat in relevant_stats:
             npc_val = npc.get_stat(stat)
             npc_stat_mod -= (npc_val - 50) / 500 * 0.15
 
