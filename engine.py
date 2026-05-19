@@ -23,7 +23,7 @@ from events.conditional import (
     taoyuan_oath_event, huarong_road_event, three_visits_to_zhuge_event
 )
 from progression import Progression
-from npc_schedule import get_npc_location, is_npc_active, is_faction_leader
+from npc_schedule import get_npc_location, is_npc_active, is_faction_leader, is_major_hero
 from skills import get_skill, SKILLS, can_learn_skill
 
 # NPC赠送技能
@@ -175,8 +175,8 @@ class SanguoEngine:
             self.state.player.modify_stat("名", 2)
 
             # 战利品：敌人遗落的资源
-            gold_loot = random.randint(5, 20)
-            food_loot = random.randint(5, 20)
+            gold_loot = random.randint(8, 25)
+            food_loot = random.randint(8, 30)
             self.state.player.gold += gold_loot
             self.state.player.food += food_loot
 
@@ -334,11 +334,7 @@ class SanguoEngine:
         combat_result = self._check_combat_encounter()
 
         # ============ NPC 遭遇检查（本地 + 附近） ============
-        encounter = self._check_npc_encounter(max_distance=0)  # 先检查本地
-        if not encounter:
-            # 本地没有，30%概率检查附近城市（需要移动）
-            if random.random() < 0.30:
-                encounter = self._check_npc_encounter(max_distance=1)
+        encounter = self._check_npc_encounter()  # 仅检查同城
 
         if self.state.is_game_over():
             self.running = False
@@ -407,6 +403,10 @@ class SanguoEngine:
             candidates.append((npc_name, npc))
 
         if not candidates:
+            return None
+
+        # 基础20%概率遇上有候选的NPC
+        if random.random() > 0.20:
             return None
 
         # 随机选择一个 NPC 遭遇
@@ -646,47 +646,81 @@ class SanguoEngine:
     def _try_recruit_npc(self, npc, strategy):
         """
         尝试招募 NPC，返回 (success: bool, message: str)
+        公式：基础率 + 玩家官职/魅力修正 + NPC属性门槛 + 好感度 + 策略
         """
-        # 已招募检查
         if self.state.event_flags.get(f"已招募_{npc.name}", False):
             return False, f"{npc.name}已在你麾下。"
 
-        # 阵营领袖惩罚（-15%，但历史上刘备、曹操都有招贤纳士）
-        leader_mod = -0.15 if is_faction_leader(npc.name) else 0.0
+        p = self.state.player
+        rank_idx = config.RANK_ORDER.index(p.rank)
 
-        # 基础成功率
-        base_rate = 0.50
+        # ========== 名将分层基础率 ==========
+        top_tier = {"刘备", "曹操"}
+        mid_tier = {"关羽", "张飞", "赵云", "吕布", "诸葛亮", "周瑜", "司马懿"}
+        if npc.name in top_tier:
+            base_rate = 0.20
+        elif npc.name in mid_tier:
+            base_rate = 0.35
+        else:
+            base_rate = 0.50
 
-        # 好感度修正
-        rel = self.state.player.get_relation(npc.name)
-        rel_mod = (rel / 100) * 0.20
+        # ========== 玩家官职修正（0~9级官职 -> 0% ~ +27%）==========
+        rank_mod = rank_idx * 0.03
 
-        # 魅力修正
-        charisma_mod = (self.state.player.get_stat("魅") - 50) / 500
+        # ========== 玩家魅力修正（50基准，100满魅力 +15%）==========
+        charisma_mod = max(-0.20, (p.get_stat("魅") - 50) / 50 * 0.15)
 
-        # 对话策略加成
+        # ========== NPC 属性门槛（属性越高越看不上你，每个属性-3%）==========
+        npc_stat_mod = 0
+        for stat in ["魅", "武", "智"]:
+            npc_val = npc.get_stat(stat)
+            npc_stat_mod -= (npc_val - 50) / 500 * 0.15
+
+        # ========== 好感度修正（0~100 -> 0~+30%）==========
+        rel = p.get_relation(npc.name)
+        rel_mod = (rel / 100) * 0.30
+
+        # ========== 对话策略 ==========
         strategy_mods = {
             "sincere": 0.10,
             "bribe": 0.05,
             "righteous": 0.05,
-            "coerce": -0.20,  # 强行挽留反而降低成功率
+            "coerce": -0.20,
         }
         strategy_mod = strategy_mods.get(strategy, 0.0)
 
-        # 消耗处理
-        cost = 0
-        if strategy == "bribe":
-            cost = 30
-        elif strategy == "coerce":
-            cost = 20
-
+        # ========== 消耗处理 ==========
+        cost = 30 if strategy == "bribe" else (20 if strategy == "coerce" else 0)
         if cost > 0:
-            self.state.player.gold -= cost
+            p.gold -= cost
 
-        final_rate = base_rate + rel_mod + charisma_mod + leader_mod + strategy_mod
-        final_rate = max(0.05, min(0.95, final_rate))
+        final_rate = (base_rate + rank_mod + charisma_mod + npc_stat_mod
+                     + rel_mod + strategy_mod)
+        final_rate = max(0.05, min(0.90, final_rate))
 
         success = random.random() < final_rate
+
+        if success:
+            self.state.event_flags[f"已招募_{npc.name}"] = True
+            p.modify_relation(npc.name, 20)
+            gift = NPC_GIFT_SKILLS.get(npc.name)
+            gift_msg = ""
+            if gift:
+                skill = get_skill(gift["skill_id"])
+                if skill:
+                    p.add_skill(gift["skill_id"])
+                    gift_msg = f"\n「你我共事，我有一技相赠——」\n「此乃'{skill.name}'，愿你善用之。」\n（获得技能：{skill.name}）"
+            return True, f"\n{npc.name}点头应允，愿意加入麾下！\n（{npc.name}已加入队伍，好感度+20）{gift_msg}"
+        else:
+            penalty = -10 if strategy == "coerce" else -5
+            p.modify_relation(npc.name, penalty)
+            msgs = {
+                "sincere": f"\n{npc.name}摇头拒绝：「容我三思。」",
+                "bribe": f"\n{npc.name}冷笑：「这点钱想收买我？」\n（金-{cost}，好感度{penalty}）",
+                "righteous": f"\n{npc.name}沉吟不语，最终摇头离去。",
+                "coerce": f"\n{npc.name}怒道：「你当我是什么人！」拂袖而去。\n（金-{cost}，好感度{penalty}）",
+            }
+            return False, msgs.get(strategy, "")
 
         if success:
             self.state.event_flags[f"已招募_{npc.name}"] = True

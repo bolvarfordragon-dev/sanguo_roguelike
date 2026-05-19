@@ -57,8 +57,9 @@ NPC_SCHEDULE = {
         "active_years": [161, 223],
         "home_base": "涿郡",
         "timeline": [
-            {"years": [161, 184], "location": "涿郡", "event": "早年生平，织席贩履"},
-            {"years": [184, 189], "location": "涿郡", "event": "黄巾之乱，因功封安喜尉"},
+            {"years": [161, 183], "location": "涿郡", "event": "早年生平，织席贩履"},
+            {"years": [184, 186], "location": "颍川", "event": "黄巾之乱后四处征战"},
+            {"years": [186, 189], "location": "涿郡", "event": "因功封安喜尉"},
             {"years": [189, 193], "location": "洛阳", "event": "讨伐董卓，参与酸枣会盟"},
             {"years": [193, 199], "location": "北海", "event": "依附公孙瓒，驻守平原"},
             {"years": [199, 201], "location": "汝南", "event": "依附袁绍，官渡前夕"},
@@ -261,6 +262,12 @@ def is_npc_active(npc_name, year):
 def is_faction_leader(npc_name):
     """判断是否为势力领袖"""
     return NPC_SCHEDULE.get(npc_name, {}).get("is_faction_leader", False)
+
+
+def is_major_hero(npc_name):
+    """判断是否为历史名将（招募难度额外加成）"""
+    major_heroes = {"刘备", "关羽", "张飞", "赵云", "诸葛亮", "曹操", "吕布", "孙权", "周瑜", "司马懿"}
+    return npc_name in major_heroes
 
 
 def get_npcs_in_city(city, year):
