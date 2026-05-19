@@ -309,6 +309,10 @@ class SanguoEngine:
             travel_text,
             f"你于{self.state.get_time_str()}抵达{target_city}。",
             f"（消耗金{self.state.player.gold + cost}→{self.state.player.gold}，消耗体力{int(move_cost)}）",
+            "",
+            f"── {target_city} 城门 ──",
+            f"  🏪 市集 — 输入 'market' 10金买15粮",
+            f"  🍶 酒馆 — 输入 'intel' 打听消息（20金）",
         ]
         if encounter:
             result.append(f"\n{encounter}")
