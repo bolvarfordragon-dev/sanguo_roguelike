@@ -596,6 +596,8 @@ class SanguoEngine:
             if "饥饿" not in p.effects:
                 p.effects.append("饥饿")
                 p.morale = max(0, p.morale - 15)
+            # 饥饿每回合扣血
+            p.take_damage(5)
         else:
             if "饥饿" in p.effects:
                 p.effects.remove("饥饿")
