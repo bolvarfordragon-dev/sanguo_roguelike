@@ -145,11 +145,11 @@ class CombatSession:
             self.attacker_damage = int(atk_troops * 0.1)
             self.defender_damage = int(def_troops * 0.05)
         elif player_won:
-            self.defender_damage = int(def_troops * (0.35 + random.random() * 0.25) * damage_mod * skill_damage_mod)
-            self.attacker_damage = int(atk_troops * (0.08 + random.random() * 0.12) * risk_mod * skill_risk_mod)
+            self.defender_damage = int(def_troops * (0.20 + random.random() * 0.15) * damage_mod * skill_damage_mod)
+            self.attacker_damage = int(atk_troops * (0.05 + random.random() * 0.08) * risk_mod * skill_risk_mod)
         else:
-            self.attacker_damage = int(atk_troops * (0.30 + random.random() * 0.25) * risk_mod * skill_risk_mod)
-            self.defender_damage = int(def_troops * (0.10 + random.random() * 0.15) * damage_mod * skill_damage_mod)
+            self.attacker_damage = int(atk_troops * (0.20 + random.random() * 0.20) * risk_mod * skill_risk_mod)
+            self.defender_damage = int(def_troops * (0.08 + random.random() * 0.10) * damage_mod * skill_damage_mod)
 
         self.winner = self.attacker if player_won else self.defender
         self.loser = self.defender if player_won else self.attacker

@@ -1,81 +1,74 @@
 #!/usr/bin/env python3
-"""
-MVP 测试脚本（非交互版）- 模拟一局完整游戏的前2年
-"""
+"""Minimal MVP test"""
 import sys
 import random
 sys.path.insert(0, '/root/sanguo_roguelike')
 
 import engine
 
-def run_mvp():
-    random.seed(12345)
-    e = engine.SanguoEngine()
-    e.new_game()
+random.seed(42)
+e = engine.SanguoEngine()
+e.new_game()
 
-    print("=" * 50)
-    print("⚔️  三国文字Roguelike MVP 自动测试")
-    print("=" * 50)
+print("=" * 52)
+print("⚔️  三国文字Roguelike MVP Test ⚔️")
+print("=" * 52)
+print(f"\n📅 {e.state.get_time_str()} | 📍 {e.state.player.location}")
+e.show_status()
+
+months = 0
+max_months = 48
+results = []
+
+while e.running and months < max_months:
+    result = e.tick()
+    months += 1
+    
+    if result is None:
+        print(f"\n💀 游戏结束 (存活 {months} 个月)")
+        break
 
     p = e.state.player
-    print(f"\n📅 {e.state.get_time_str()} | 📍 {p.location}")
-    print(f"身份：{p.rank} | {p.name}")
-    print(f"属性：武{p.get_stat('武')} 智{p.get_stat('智')} 名{p.get_stat('名')} 魅{p.get_stat('魅')} 运{p.get_stat('运')}")
-    print(f"资源：体力{p.stamina} 士气{p.morale} 金{p.gold} 粮{p.food}")
+    
+    # Combat
+    if result.get('combat'):
+        enemy = result['combat']['enemy']
+        ctx = result['combat']['ctx']
+        usable = e.get_active_skills_prompt()
+        from combat import format_combat_intro
+        print(f"\n⚔️  战斗: {enemy.name} (武力{enemy.get_stat('武')}, {enemy.troops}兵)")
+        if usable:
+            print(f"  可用技能: {', '.join(s for s,_ in usable)}")
+        print(f"  选择: 进攻")
+        res = e.resolve_combat_action('1')
+        print("  结果:", [l for l in res.split('\n') if l.strip()][-1])
 
-    months = 0
-    combats = 0; wins = 0; npc_meets = 0; fragments = 0
+    # NPC encounter
+    if result.get('npc_encounter'):
+        npc = result['npc_encounter']['npc']
+        print(f"\n🎭 NPC遭遇: {npc.name} ({npc.rank}) - {npc.faction}")
+        print(engine.format_npc_encounter_options(npc).strip())
+        # Try recruit with option 1
+        print("  选择: 诚心相邀 (选项1)")
+        res = e.try_recruit_npc(npc, '1')
+        if res:
+            print(f"  结果: {res[:100]}")
 
-    # 模拟24个月
-    for i in range(24):
-        result = e.tick()
-        months += 1
-        if result is None:
-            print(f"\n💀 游戏结束")
-            break
+    # Mandatory events
+    if result.get('mandatory'):
+        ev = result['mandatory']
+        print(f"\n⚔️ 【必然事件】{ev['name']}")
 
-        p = e.state.player
+    # Monthly summary every 6 months
+    if months % 6 == 0:
+        print(f"\n--- {months}个月小结 ---")
+        print(f"  📍 {p.location} | 💰{p.gold}金 | 🍚{p.food}粮 | ⚡{p.stamina}体力 | 💨{p.morale}士气")
+        print(f"  📊 武力{p.get_stat('武')} 智谋{p.get_stat('智')} 名声{p.get_stat('名')} 魅力{p.get_stat('魅')} 运气{p.get_stat('运')}")
+        print(f"  🎒 技能: 主动{len(p.active_skills)} 被动{len(p.passive_skills)} 碎片{p.inheritance_fragments}")
+        if p.rank != '散兵':
+            print(f"  🏅 等级: {p.rank}")
 
-        # 战斗
-        if result.get('combat'):
-            combats += 1
-            enemy = result['combat']['enemy']
-            # 自动选进攻
-            res = e.resolve_combat_action('1')
-            if '大胜' in res or '胜利' in res: wins += 1
-            if '碎片' in res: fragments += 1
-            print(f"{result['time']} ⚔️ {enemy.name} → {'胜' if wins else '负'} | "
-                  f"体力{p.stamina} 金{p.gold} 粮{p.food} 碎片{p.inheritance_fragments}")
-            continue
-
-        # NPC
-        if result.get('npc_encounter'):
-            npc_meets += 1
-            enc = result['npc_encounter']
-            e.handle_npc_encounter('7')  # 离开
-            print(f"{result['time']} 🎭 {enc['npc_name']} → 离开")
-            continue
-
-        # 事件
-        ev_parts = []
-        if result.get('mandatory'):
-            ev_parts.append(f"📜{result['mandatory']['name']}")
-        for c in result.get('conditionals', []):
-            ev_parts.append(f"✨{c.get('name','')[:12]}")
-        ev_str = ' '.join(ev_parts)
-        print(f"{result['time']} | {p.location[:4]} | 体力{p.stamina} 士气{p.morale} 金{p.gold} 粮{p.food} | {ev_str}")
-
-    # 结局
-    print(f"\n{'='*50}")
-    print(f"📊 MVP 测试结果（{months}个月）")
-    print(f"  ⚔️ 战斗: {combats}场 (胜{wins}负{combats-wins})")
-    print(f"  🎭 NPC相遇: {npc_meets}次")
-    print(f"  🔮 碎片: {p.inheritance_fragments}枚")
-    print(f"  💰 金: {p.gold} | 🍚 粮: {p.food}")
-    print(f"  📈 经验: {p.exp} | 官职: {p.rank}")
-    print(f"  🎒 主动技能: {p.active_skills}")
-    print(f"  🛡️ 被动技能: {p.passive_skills}")
-    print(f"{'='*50}")
-
-if __name__ == "__main__":
-    run_mvp()
+print(f"\n{'='*52}")
+print("✅ MVP测试完成")
+stats = e.progression.print_summary()
+print(stats)

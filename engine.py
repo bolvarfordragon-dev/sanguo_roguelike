@@ -187,9 +187,9 @@ class SanguoEngine:
             else:
                 merc_msg = ""
 
-            # 稀有碎片（10%概率）
+            # 稀有碎片（15%概率）
             frag_msg = ""
-            if random.random() < 0.10:
+            if random.random() < 0.15:
                 frag = 1
                 self.state.player.inheritance_fragments += frag
                 frag_msg = f"\n拾获战场遗落的传承碎片 ×{frag}！"
@@ -430,7 +430,7 @@ class SanguoEngine:
 
         # 基础28%概率，随名望提升略微降低（名望越高，匪寇越少主动招惹）
         fame_mod = max(-0.05, -(p.get_stat("名") - 10) / 1000)
-        base_chance = 0.28 + fame_mod
+        base_chance = 0.20 + fame_mod
 
         # 已有战斗待处理
         if self.pending_combat:
@@ -563,8 +563,8 @@ class SanguoEngine:
         elif p.morale > 85:
             p.morale = max(20, p.morale - 2)
         p.morale = max(0, p.morale)
-        p.food = max(0, p.food - 5)
-        p.gold = max(0, p.gold - 2)
+        p.food = max(0, p.food - 3)
+        p.gold = max(0, p.gold - 1)
         if p.food == 0:
             if "饥饿" not in p.effects:
                 p.effects.append("饥饿")
@@ -651,8 +651,8 @@ class SanguoEngine:
         if self.state.event_flags.get(f"已招募_{npc.name}", False):
             return False, f"{npc.name}已在你麾下。"
 
-        # 阵营领袖惩罚（-30%，但历史上刘备、曹操都有招贤纳士）
-        leader_mod = -0.30 if is_faction_leader(npc.name) else 0.0
+        # 阵营领袖惩罚（-15%，但历史上刘备、曹操都有招贤纳士）
+        leader_mod = -0.15 if is_faction_leader(npc.name) else 0.0
 
         # 基础成功率
         base_rate = 0.50
