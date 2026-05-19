@@ -12,16 +12,16 @@ COMBAT_ACTIONS = {
         "description": "全军压上，奋勇向前",
         "win_rate_mod": +0.12,
         "morale_mod": -5,
-        "stamina_mod": -20,
-        "damage_mod": 1.3,   # 造成更多伤害
+        "stamina_mod": -12,
+        "damage_mod": 1.3,
         "risk_mod": 1.2,     # 承受更多伤害
     },
     "坚守": {
         "description": "以逸待劳，消耗敌军",
         "win_rate_mod": +0.05,
         "morale_mod": +3,
-        "stamina_mod": -5,
-        "damage_mod": 0.7,   # 造成较少伤害
+        "stamina_mod": -3,
+        "damage_mod": 0.7,
         "risk_mod": 0.6,     # 承受较少伤害
     },
     "撤退": {
@@ -37,7 +37,7 @@ COMBAT_ACTIONS = {
         "description": "施计取胜，智取敌军",
         "win_rate_mod": +0.20,
         "morale_mod": 0,
-        "stamina_mod": -10,
+        "stamina_mod": -8,
         "damage_mod": 1.5,
         "risk_mod": 0.5,
         "requires_intel": 55,
@@ -384,11 +384,29 @@ def start_combat(player, enemy, ctx):
     return session
 
 
-def format_combat_intro(enemy, ctx):
+def format_combat_intro(enemy, ctx, usable_skills=None):
     """格式化战斗开始提示"""
     loc = ctx.get("location", "某地")
     terrain = ctx.get("terrain", "平原")
     troops = ctx.get("attacker_troops", 100)
+
+    intel = enemy.get_stat("智")
+    actions = [
+        f"  1. 进攻 — 全力出击（+12%胜率，消耗体力{COMBAT_ACTIONS['进攻']['stamina_mod']}）",
+        f"  2. 坚守 — 以逸待劳（+5%胜率，消耗体力{COMBAT_ACTIONS['坚守']['stamina_mod']}）",
+        f"  3. 撤退 — 保存实力（-15%胜率，可逃，消耗体力{COMBAT_ACTIONS['撤退']['stamina_mod']}）",
+    ]
+    if intel >= 55:
+        actions.append(f"  4. 用计 — 施计取胜（+20%胜率，消耗体力{COMBAT_ACTIONS['用计']['stamina_mod']}，需智谋≥55）")
+
+    skill_section = ""
+    if usable_skills:
+        skill_lines = []
+        for sid, sk in usable_skills:
+            stat_str = ", ".join(f"{s}{r}" for s, r in (sk.stat_req or {}).items())
+            skill_lines.append(f"  [{sid.upper()}] {sk.name} — {sk.desc}")
+        if skill_lines:
+            skill_section = "\n" + "\n".join(["【主动技能】（可选用字母键使用）"] + skill_lines)
 
     return f"""
 {'━'*30}
@@ -399,10 +417,5 @@ def format_combat_intro(enemy, ctx):
 {'━'*30}
 
 请选择战术：
-  1. 进攻 — 全力出击，奋勇向前（+12%胜率，高伤害高风险）
-  2. 坚守 — 以逸待劳，消耗敌军（+5%胜率，低伤害低风险）
-  3. 撤退 — 保存实力，争取脱离（-15%胜率，可逃）
-  4. 用计 — 施计取胜，智取敌军（+20%胜率，需智谋≥55）
-
-输入数字 1-4 进行选择。
+{chr(10).join(actions)}{skill_section}
 """

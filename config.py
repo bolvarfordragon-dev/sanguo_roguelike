@@ -27,7 +27,7 @@ MORALE_THRESHOLD = 30     # 士气低于此值可能溃逃
 
 # ============ 资源参数 ============
 INITIAL_GOLD = 50         # 初始金钱
-INITIAL_FOOD = 30         # 初始粮草
+INITIAL_FOOD = 50         # 初始粮草
 MAX_GOLD = 9999
 MAX_FOOD = 999
 

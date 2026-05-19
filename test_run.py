@@ -10,11 +10,11 @@ e.new_game()
 
 print("\n=== 测试 tick ===")
 result = e.tick()
-e.show_monthly_summary()
+print("tick result:", result)
 
 print("\n=== 测试第二次 tick ===")
 result = e.tick()
-e.show_monthly_summary()
+print("tick result:", result)
 
 print("\n=== 测试解锁系统 ===")
 print(e.progression.print_summary())

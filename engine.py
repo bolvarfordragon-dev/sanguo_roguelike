@@ -35,6 +35,26 @@ NPC_GIFT_SKILLS = {
 }
 
 
+class CombatEnemy:
+    """战斗中的敌方单位（程序生成的敌人）"""
+    def __init__(self, name, stats, troops, morale, terrain, narrative):
+        self.name = name
+        self.stats = stats
+        self.hp = 100
+        self.morale = morale
+        self.troops = troops
+        self.terrain = terrain
+        self.narrative = narrative
+        self.rank = "杂兵"
+        self.location = ""
+        self.effects = []
+        self.skills = []
+        self.active_skills = []
+        self.passive_skills = []
+    def get_stat(self, stat):
+        return self.stats.get(stat, 30)
+
+
 class SanguoEngine:
     """游戏主引擎"""
 
@@ -108,9 +128,10 @@ class SanguoEngine:
         }
         return format_combat_intro(enemy, ctx)
 
-    def resolve_combat_action(self, choice):
+    def resolve_combat_action(self, choice, active_skill=None):
         """
         处理玩家战斗选择（1-4）
+        active_skill: str or None — 要使用的主动技能ID
         返回: str — 完整战斗叙事
         """
         if not self.pending_combat:
@@ -126,14 +147,19 @@ class SanguoEngine:
         ctx = self.pending_combat["ctx"]
 
         session = start_combat(self.state.player, enemy, ctx)
-        session.simulate(player_action=action)
+        session.simulate(player_action=action, active_skill=active_skill)
 
         # 更新玩家状态
         costs = session.get_cost(action)
         self.state.player.morale = max(10, min(100,
             self.state.player.morale + costs.get("morale", 0)))
+
+        # 体力消耗（含被动技能加成）
+        stamina_cost = costs.get("stamina", 0)
+        if "iron_stamina" in self.state.player.passive_skills:
+            stamina_cost = int(stamina_cost / 2)
         self.state.player.stamina = max(0, min(100,
-            self.state.player.stamina + costs.get("stamina", 0)))
+            self.state.player.stamina + stamina_cost))
 
         # 处理战斗结果
         if session.fled:
@@ -142,18 +168,42 @@ class SanguoEngine:
             self.state.player.morale = max(20, self.state.player.morale - 8)
             self.state.player.exp += 5
         elif session.winner == self.state.player:
-            # 胜利
+            # 胜利：经验 + 名望 + 战利品
             self.state.player.food = max(0, self.state.player.food - session.attacker_damage)
-            self.state.player.exp += 20 + session.defender_damage // 10
+            exp_gain = 20 + session.defender_damage // 10
+            self.state.player.exp += exp_gain
             self.state.player.modify_stat("名", 2)
+
+            # 战利品：敌人遗落的资源
+            gold_loot = random.randint(5, 20)
+            food_loot = random.randint(5, 20)
+            self.state.player.gold += gold_loot
+            self.state.player.food += food_loot
+
+            # 佣兵之道：战斗胜利额外+5金
+            if "mercenary_spirit" in self.state.player.passive_skills:
+                self.state.player.gold += 5
+                merc_msg = "（+5 佣兵奖励）"
+            else:
+                merc_msg = ""
+
+            # 稀有碎片（10%概率）
+            frag_msg = ""
+            if random.random() < 0.10:
+                frag = 1
+                self.state.player.inheritance_fragments += frag
+                frag_msg = f"\n拾获战场遗落的传承碎片 ×{frag}！"
+
+            loot_line = f"\n📦 战利品：金+{gold_loot}，粮+{food_loot}{merc_msg}{frag_msg}"
+            narrative = session.get_full_narrative() + loot_line
         else:
             # 战败
             self.state.player.food = max(0, self.state.player.food - session.attacker_damage)
             self.state.player.morale = max(10, self.state.player.morale - 15)
             if session.attacker_damage > session.defender_damage * 2:
                 self.state.player.take_damage(random.randint(10, 30))
+            narrative = session.get_full_narrative()
 
-        narrative = session.get_full_narrative()
         self.pending_combat = None
         return narrative
 
@@ -193,8 +243,10 @@ class SanguoEngine:
         if not move_info["can"]:
             return move_info["narrative"]
 
-        # 检查金钱
+        # 检查金钱（节旅人：移动消耗-3）
         cost = move_info["cost"]
+        if "frugal_traveler" in self.state.player.passive_skills:
+            cost = max(2, cost - 3)
         if self.state.player.gold < cost:
             return f"盘缠不足，需要{cost}金，你只有{self.state.player.gold}金。"
 
@@ -206,8 +258,11 @@ class SanguoEngine:
         # 时间推进
         self.state.advance_time(move_info["time"])
 
-        # 消耗体力
-        self.state.player.stamina = max(0, self.state.player.stamina - 15)
+        # 消耗体力（含铁人效果减半）
+        move_cost = 15
+        if "iron_stamina" in self.state.player.passive_skills:
+            move_cost = 8
+        self.state.player.stamina = max(0, self.state.player.stamina - move_cost)
 
         # 触发随机遭遇
         encounter = self._check_travel_encounter(target_city)
@@ -215,7 +270,7 @@ class SanguoEngine:
         result = [
             travel_text,
             f"你于{self.state.get_time_str()}抵达{target_city}。",
-            f"（消耗金{self.state.player.gold + cost}→{self.state.player.gold}，消耗体力15）",
+            f"（消耗金{self.state.player.gold + cost}→{self.state.player.gold}，消耗体力{int(move_cost)}）",
         ]
         if encounter:
             result.append(f"\n{encounter}")
@@ -275,12 +330,28 @@ class SanguoEngine:
         # 自然恢复
         self._natural_recovery()
 
-        # ============ NPC 遭遇检查 ============
-        encounter = self._check_npc_encounter()
+        # ============ 战斗遭遇检查 ============
+        combat_result = self._check_combat_encounter()
+
+        # ============ NPC 遭遇检查（本地 + 附近） ============
+        encounter = self._check_npc_encounter(max_distance=0)  # 先检查本地
+        if not encounter:
+            # 本地没有，30%概率检查附近城市（需要移动）
+            if random.random() < 0.30:
+                encounter = self._check_npc_encounter(max_distance=1)
 
         if self.state.is_game_over():
             self.running = False
             return None
+
+        # 优先处理战斗
+        if combat_result:
+            return {
+                "time": f"{year}年{month}月",
+                "mandatory": mandatory_result,
+                "conditionals": conditional_results,
+                "combat": combat_result,
+            }
 
         if encounter:
             self.pending_npc_encounter = encounter
@@ -297,19 +368,21 @@ class SanguoEngine:
             "conditionals": conditional_results,
         }
 
-        return {
-            "time": f"{year}年{month}月",
-            "mandatory": mandatory_result,
-            "conditionals": conditional_results,
-        }
-
-    def _check_npc_encounter(self):
-        """检查是否触发 NPC 遭遇"""
+    def _check_npc_encounter(self, max_distance=0):
+        """检查是否触发 NPC 遭遇
+        max_distance: 0=仅同城，1=同城+相邻城市
+        """
         if not self.state or not self.state.player:
             return None
 
         current_year = self.state.year
         player_location = self.state.player.location
+
+        # 相邻城市列表
+        adj_cities = set()
+        if max_distance >= 1:
+            adj = get_adjacent_cities(player_location)
+            adj_cities = set(adj)  # adj 是城市名字符串列表
 
         candidates = []
         for npc_name, npc in self.state.npcs.items():
@@ -328,7 +401,7 @@ class SanguoEngine:
 
             # 获取 NPC 当前位置
             npc_loc = get_npc_location(npc_name, current_year)
-            if npc_loc != player_location:
+            if npc_loc != player_location and (max_distance < 1 or npc_loc not in adj_cities):
                 continue
 
             candidates.append((npc_name, npc))
@@ -344,20 +417,158 @@ class SanguoEngine:
             "npc": npc,
         }
 
+    def _check_combat_encounter(self):
+        """检查是否触发战斗遭遇"""
+        if not self.state or not self.state.player:
+            return None
+
+        p = self.state.player
+
+        # 体力不足时不触发战斗
+        if p.stamina < 10:
+            return None
+
+        # 基础28%概率，随名望提升略微降低（名望越高，匪寇越少主动招惹）
+        fame_mod = max(-0.05, -(p.get_stat("名") - 10) / 1000)
+        base_chance = 0.28 + fame_mod
+
+        # 已有战斗待处理
+        if self.pending_combat:
+            return None
+
+        if random.random() > base_chance:
+            return None
+
+        # 根据年份和地点生成敌人
+        enemy = self._generate_combat_enemy()
+        if not enemy:
+            return None
+
+        ctx = {
+            "attacker_troops": max(10, p.food // 2 + 30),
+            "defender_troops": enemy.troops,
+            "terrain": enemy.terrain,
+            "weather": self._get_season_weather(),
+            "location": p.location,
+            "attacker_morale": p.morale,
+            "defender_morale": enemy.morale,
+        }
+
+        self.pending_combat = {"enemy": enemy, "ctx": ctx}
+        return {
+            "enemy": enemy,
+            "ctx": ctx,
+        }
+
+    def _generate_combat_enemy(self):
+        """根据当前年份和地点生成战斗敌人"""
+        year = self.state.year
+        loc = self.state.player.location
+
+        # 敌人类型按年份分段
+        if year <= 184:
+            enemy_pool = [
+                {"name": "黄巾乱兵", "troops": 80, "morale": 60, "terrain": "平原", "narrative": "一队黄巾乱兵呼啸而来，拦住了你的去路！", "stats": {"武": 45, "智": 20, "名": 5, "魅": 10, "运": 20}},
+                {"name": "黄巾头目", "troops": 120, "morale": 55, "terrain": "山林", "narrative": "一个身披黄巾的悍匪头目，率众截住了你的去路！", "stats": {"武": 60, "智": 30, "名": 10, "魅": 15, "运": 25}},
+                {"name": "溃逃官军", "troops": 60, "morale": 30, "terrain": "平原", "narrative": "一队溃散的官军正在劫掠，撞见了你！", "stats": {"武": 40, "智": 25, "名": 5, "魅": 10, "运": 15}},
+            ]
+        elif year <= 189:
+            enemy_pool = [
+                {"name": "山贼", "troops": 70, "morale": 50, "terrain": "山林", "narrative": "山林中杀出一伙山贼！", "stats": {"武": 50, "智": 20, "名": 5, "魅": 10, "运": 20}},
+                {"name": "散兵游勇", "troops": 55, "morale": 40, "terrain": "平原", "narrative": "一队散兵正在四处劫掠，与你撞个正着！", "stats": {"武": 40, "智": 20, "名": 5, "魅": 10, "运": 15}},
+                {"name": "董卓军斥候", "troops": 90, "morale": 65, "terrain": "平原", "narrative": "董卓军的斥候发现了你，领兵杀来！", "stats": {"武": 55, "智": 30, "名": 10, "魅": 15, "运": 25}},
+            ]
+        elif year <= 200:
+            enemy_pool = [
+                {"name": "袁绍军", "troops": 100, "morale": 60, "terrain": "平原", "narrative": "袁绍的军队正在这一带活动，与你遭遇！", "stats": {"武": 55, "智": 30, "名": 15, "魅": 15, "运": 30}},
+                {"name": "曹操军", "troops": 95, "morale": 65, "terrain": "平原", "narrative": "一队曹操的兵马拦在前方！", "stats": {"武": 58, "智": 35, "名": 15, "魅": 18, "运": 28}},
+                {"name": "流寇", "troops": 65, "morale": 45, "terrain": "山林", "narrative": "一伙流寇从林间杀出，意图劫掠！", "stats": {"武": 45, "智": 22, "名": 5, "魅": 10, "运": 18}},
+            ]
+        else:
+            enemy_pool = [
+                {"name": "敌国游骑", "troops": 110, "morale": 65, "terrain": "平原", "narrative": "敌国游骑发现了你的踪迹，包围过来！", "stats": {"武": 60, "智": 30, "名": 15, "魅": 15, "运": 28}},
+                {"name": "蛮族入侵者", "troops": 95, "morale": 55, "terrain": "山地", "narrative": "一股蛮族军队烧杀劫掠，与你迎面撞上！", "stats": {"武": 65, "智": 20, "名": 10, "魅": 10, "运": 22}},
+                {"name": "山贼", "troops": 75, "morale": 50, "terrain": "山林", "narrative": "山贼们设下埋伏，等你踏入陷阱！", "stats": {"武": 52, "智": 22, "名": 5, "魅": 10, "运": 20}},
+            ]
+
+        # 根据玩家rank调整敌人强度
+        rank_troop_scale = {
+            "散兵": 0.8, "什长": 0.9, "伍长": 1.0, "队长": 1.1,
+            "曲长": 1.2, "司马": 1.4, "校尉": 1.6, "中郎将": 1.8, "将军": 2.0,
+        }
+        scale = rank_troop_scale.get(self.state.player.rank, 1.0)
+
+        chosen = random.choice(enemy_pool)
+
+        # 特殊地名地形
+        terrain_override = None
+        if loc in ["汜水关", "虎牢关", "武关"]:
+            terrain_override = "关隘"
+        elif loc in ["江陵", "番禺", "广陵"]:
+            terrain_override = "水域"
+
+        # 构造一个兼容战斗系统的敌人对象
+        enemy_stats = chosen["stats"].copy()
+        for stat in enemy_stats:
+            enemy_stats[stat] = max(10, int(enemy_stats[stat] * scale))
+
+        enemy = CombatEnemy(
+            name=chosen["name"],
+            stats=enemy_stats,
+            troops=max(20, int(chosen["troops"] * scale)),
+            morale=min(95, max(30, chosen["morale"] + int(scale * 5))),
+            terrain=terrain_override or chosen["terrain"],
+            narrative=chosen["narrative"],
+        )
+        return enemy
+
+    def get_active_skills_prompt(self):
+        """获取玩家当前可用的主动技能列表提示"""
+        p = self.state.player
+        if not p.active_skills:
+            return None
+        usable = []
+        for sid in p.active_skills:
+            from skills import get_skill
+            sk = get_skill(sid)
+            if not sk:
+                continue
+            if sk.stat_req:
+                if not all(p.get_stat(s) >= r for s, r in sk.stat_req.items()):
+                    continue
+            usable.append((sid, sk))
+        return usable
+
+    def _get_season_weather(self):
+        """根据当前月份返回天气"""
+        month = self.state.month
+        if month in [12, 1, 2]:
+            weathers = ["雪", "晴", "大雾"]
+        elif month in [3, 4, 5]:
+            weathers = ["晴", "大雨", "大雾"]
+        elif month in [6, 7, 8]:
+            weathers = ["大雨", "晴", "大风"]
+        else:
+            weathers = ["晴", "大雾", "大风"]
+        return random.choice(weathers)
+
     def _natural_recovery(self):
         p = self.state.player
         if not p:
             return
-        p.stamina = min(100, p.stamina + 15)
+        p.stamina = min(100, p.stamina + 25)
+        p.stamina = max(0, p.stamina)
         if p.morale < 50:
             p.morale = min(100, p.morale + 5)
         elif p.morale > 85:
             p.morale = max(20, p.morale - 2)
+        p.morale = max(0, p.morale)
         p.food = max(0, p.food - 5)
         p.gold = max(0, p.gold - 2)
         if p.food == 0:
-            p.morale -= 15
-            p.add_effect("饥饿")
+            if "饥饿" not in p.effects:
+                p.effects.append("饥饿")
+                p.morale = max(0, p.morale - 15)
         else:
             if "饥饿" in p.effects:
                 p.effects.remove("饥饿")
@@ -440,8 +651,8 @@ class SanguoEngine:
         if self.state.event_flags.get(f"已招募_{npc.name}", False):
             return False, f"{npc.name}已在你麾下。"
 
-        # 阵营领袖检查
-        leader_mod = -0.40 if is_faction_leader(npc.name) else 0.0
+        # 阵营领袖惩罚（-30%，但历史上刘备、曹操都有招贤纳士）
+        leader_mod = -0.30 if is_faction_leader(npc.name) else 0.0
 
         # 基础成功率
         base_rate = 0.50
@@ -528,9 +739,25 @@ class SanguoEngine:
         is_leader = is_faction_leader(npc.name)
         leader_note = "（招募困难）" if is_leader else ""
 
+        rel = self.state.player.get_relation(npc.name)
+        rel_note = ""
+        if "info_network" in self.state.player.passive_skills:
+            rel_tags = {
+                range(70, 101): "【亲密】",
+                range(40, 70): "【友善】",
+                range(10, 40): "【中立】",
+                range(-10, 10): "【冷淡】",
+                range(-40, -9): "【疏远】",
+                range(-100, -39): "【敌对】",
+            }
+            for rng, tag in rel_tags.items():
+                if rel in rng:
+                    rel_note = f"  {tag} 好感度：{rel}"
+                    break
+
         options = f"""
 {npc.name}（{npc.rank}）打量着你，不知是敌是友。
-{leader_note}
+{leader_note}{rel_note}
 
 请选择行动：
   1. [诚心相邀] 表达敬意，邀其{'共举大事' if is_leader else '加入'}
@@ -692,12 +919,38 @@ def main():
         try:
             # 如果有战斗待处理
             if engine.pending_combat:
-                print("\n⚔️ 请选择战术（1-4）：")
+                usable = engine.get_active_skills_prompt()
+                if usable:
+                    skill_hints = " ".join([f"[{sid.upper()}]{sk.name}" for sid, sk in usable])
+                    print(f"\n⚔️ 选择战术（1-4），或输入技能名使用主动技能：{skill_hints}")
+                else:
+                    print("\n⚔️ 请选择战术（1-4）：")
                 cmd = input("> ").strip()
+
+                # 检查是否是技能键
+                chosen_skill = None
+                if usable:
+                    for sid, sk in usable:
+                        if cmd.upper() == sid.upper() or cmd == sk.name:
+                            chosen_skill = sid
+                            break
+
                 if cmd in ["1", "2", "3", "4"]:
                     result = engine.resolve_combat_action(cmd)
                     print(result)
                     engine.show_status()
+                elif chosen_skill:
+                    # 选了技能，再选战术
+                    skill_name = next(sk.name for s, sk in usable if s == chosen_skill)
+                    print(f"\n⚔️ 你选择使用【{skill_name}】\n请选择战术（1-4）：")
+                    tactic = input("> ").strip()
+                    if tactic in ["1", "2", "3", "4"]:
+                        result = engine.resolve_combat_action(tactic, active_skill=chosen_skill)
+                        print(result)
+                        engine.show_status()
+                    else:
+                        print("无效选择，战斗取消。")
+                        engine.pending_combat = None
                 elif cmd in ["q", "quit", "escape"]:
                     print("你决定撤出战斗……")
                     engine.pending_combat = None
@@ -746,10 +999,28 @@ def main():
                     continue
                 if result:
                     engine.show_status()
+                    # 战斗遭遇
+                    if result.get("combat"):
+                        enemy = result["combat"]["enemy"]
+                        ctx = result["combat"]["ctx"]
+                        print(f"\n⚔️ {enemy.narrative}")
+                        usable = engine.get_active_skills_prompt()
+                        print(format_combat_intro(enemy, ctx, usable_skills=usable))
+                    # NPC 遭遇
+                    if result.get("npc_encounter"):
+                        from narrative import narrate_npc_encounter
+                        enc = result["npc_encounter"]
+                        npc = enc["npc"]
+                        print(f"\n🎭 {narrate_npc_encounter(npc)}")
+                        print(engine.format_npc_encounter_options(npc))
+                    # 必然事件
                     if result.get("mandatory"):
                         e = result["mandatory"]
                         print(f"\n⚔️ 【必然事件】{e['name']}")
                         print(e["desc"][:200] + "...")
+                    # 条件事件
+                    for ev in result.get("conditionals", []):
+                        print(f"\n✨ 【{ev.get('name', '事件')}】{ev.get('desc', '')[:150]}")
             elif base_cmd == "save":
                 engine.save_game()
             else:
