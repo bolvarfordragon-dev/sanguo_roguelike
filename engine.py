@@ -651,6 +651,10 @@ class SanguoEngine:
         if self.state.event_flags.get(f"已招募_{npc.name}", False):
             return False, f"{npc.name}已在你麾下。"
 
+        # 阵营领袖（刘备/曹操）永远无法招募
+        if is_faction_leader(npc.name):
+            return False, f"{npc.name}胸怀大志，非寻常招募可得。"
+
         p = self.state.player
         rank_idx = config.RANK_ORDER.index(p.rank)
 
