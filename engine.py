@@ -233,6 +233,17 @@ class SanguoEngine:
         return "\n".join(parts)
 
 
+    def show_market(self, FOOD_PRICE=10, FOOD_AMOUNT=15):
+        """市集：可以用金买粮，每10金换15粮"""
+        p = self.state.player
+        if p.gold < FOOD_PRICE:
+            print(f"盘缠不足，市集交易需要{FOOD_PRICE}金，你只有{p.gold}金。")
+            return
+        p.gold -= FOOD_PRICE
+        p.food += FOOD_AMOUNT
+        p.food = min(100, p.food)  # 上限100
+        print(f"📦 市集易货：你付出{FOOD_PRICE}金，买入{FOOD_AMOUNT}粮，当前金{p.gold}粮{p.food}。")
+
     def show_intel(self, cost=20):
         """花钱打听消息，获得所有重要NPC的当前位置"""
         p = self.state.player
@@ -973,6 +984,7 @@ def print_help():
 │ status   - 显示状态   │
 │ map      - 查看地图   │
 │ move [城] - 移动      │
+│ market   - 集市买粮   │
 │ tick     - 推进时间   │
 │ save     - 保存游戏   │
 │ help     - 显示帮助   │
@@ -1065,6 +1077,8 @@ def main():
             elif base_cmd == "move" and arg:
                 print(engine.move_to(arg))
                 engine.show_status()
+            elif base_cmd == "market":
+                engine.show_market()
             elif base_cmd == "tick":
                 result = engine.tick()
                 if result is None and engine.state.is_game_over():
