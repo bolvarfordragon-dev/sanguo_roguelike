@@ -232,6 +232,33 @@ class SanguoEngine:
 
         return "\n".join(parts)
 
+
+    def show_intel(self, cost=20):
+        """花钱打听消息，获得所有重要NPC的当前位置"""
+        p = self.state.player
+        if p.gold < cost:
+            print(f"盘缠不足，打听消息需要{cost}金，你只有{p.gold}金。")
+            return
+        p.gold -= cost
+        current_year = self.state.year
+        print(f"""
+{'─'*40}
+📰 江湖消息（花费{cost}金）
+{'─'*40}""")
+        for npc_name, npc in self.state.npcs.items():
+            if npc.hp <= 0:
+                continue
+            if not is_npc_active(npc_name, current_year):
+                continue
+            loc = get_npc_location(npc_name, current_year)
+            npc_type = getattr(npc, 'npc_type', '武将')
+            type_icon = '⚔️' if npc_type == '武将' else ('📚' if npc_type == '文官' else '👑')
+            leader_tag = ' [阵营领袖]' if is_faction_leader(npc_name) else ''
+            recruited_tag = ' ✅已招募' if self.state.event_flags.get(f'已招募_{npc_name}', False) else ''
+            print(f"  {type_icon} {npc_name} — 现身于「{loc}」{leader_tag}{recruited_tag}")
+        print()
+        print("（移动至该城市可尝试遭遇）")
+
     def move_to(self, target_city):
         """移动到某城市"""
         current = self.state.player.location
@@ -1031,6 +1058,8 @@ def main():
                 engine.show_status()
             elif base_cmd == "map":
                 print(engine.show_map())
+            elif base_cmd == "intel":
+                engine.show_intel()
             elif base_cmd == "move" and arg:
                 print(engine.move_to(arg))
                 engine.show_status()

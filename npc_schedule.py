@@ -235,6 +235,14 @@ NPC_SCHEDULE = {
         ],
         "is_faction_leader": False,
     },
+    "江湖游侠": {
+        "active_years": [160, 200],
+        "home_base": "颍川",
+        "timeline": [
+            {"years": [160, 200], "location": "颍川", "event": "江湖四处游历"},
+        ],
+        "is_faction_leader": False,
+    }
 }
 
 
