@@ -6,6 +6,7 @@ import os
 import sys
 import random
 import config
+from config import END_YEAR
 from state import GameState
 from character import Character, NPC, NPC_PRESETS
 from combat import CombatSession, start_combat, format_combat_intro, COMBAT_ACTIONS
@@ -58,23 +59,61 @@ class CombatEnemy:
 class SanguoEngine:
     """游戏主引擎"""
 
-    def __init__(self):
+    def __init__(self, silent=False):
         self.state = None
         self.progression = None
         self.running = False
         self.pending_combat = None   # 待处理的战斗
         self.pending_npc_encounter = None  # 待处理的NPC遭遇
+        self.pending_market = False  # 待处理的市集交互
         self.pending_choice = None   # 待处理的选择
+        self.silent = silent
         self._init_progression()
 
     def _init_progression(self):
         os.makedirs(os.path.dirname(config.UNLOCK_FILE), exist_ok=True)
         self.progression = Progression(config.UNLOCK_FILE, config.HISTORY_FILE)
 
+    def _load_reincarnation(self):
+        """加载转世业力数据"""
+        path = config.REINCARNATION_FILE
+        if os.path.exists(path):
+            try:
+                import json
+                with open(path, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            except Exception:
+                pass
+        return {"karma": {}, "total_deaths": 0, "total_exp_earned": 0}
+
+    def _save_reincarnation(self, data):
+        """保存转世业力数据"""
+        os.makedirs(os.path.dirname(config.REINCARNATION_FILE), exist_ok=True)
+        import json
+        with open(config.REINCARNATION_FILE, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+
     def new_game(self):
         """开始新游戏"""
         self.state = GameState()
         player = Character(is_player=True)
+
+        # 转世加成：将累积的业力加到初始属性上
+        reinc_data = self._load_reincarnation()
+        karma = reinc_data.get("karma", {})
+        if karma:
+            reinc_msg = []
+            for stat, bonus in karma.items():
+                if bonus > 0:
+                    player.stats[stat] = player.stats.get(stat, 0) + bonus
+                    reinc_msg.append(f"{stat}+{bonus}")
+            if reinc_msg:
+                player.reincarnation_karma = karma
+                self._reinc_msg = f"【转世】前世修为：{"、".join(reinc_msg)}"
+        else:
+            player.reincarnation_karma = {}
+            self._reinc_msg = None
+
         self.state.set_player(player)
         self._init_npcs()
         self.running = True
@@ -91,22 +130,30 @@ class SanguoEngine:
             self.state.npcs[name] = npc
 
     def _print_intro(self):
-        intro = f"""
-{'='*50}
+        p = self.state.player
+        karma_part = getattr(p, 'reincarnation_karma', {}) or {}
+        karma_str = ""
+        if karma_part:
+            parts = [f"{k}+{v}" for k, v in karma_part.items() if v > 0]
+            if parts:
+                karma_str = f"\n【转世】前世修为：{'、'.join(parts)}\n"
+
+        intro = f"""{'-'*50}
 ⚔️  三国文字Roguelike ⚔️
-{'='*50}
+{'-'*50}
 
 {"中平元年（184年）春".center(40)}
 
-黄巾之乱席卷天下。
+{karma_str}黄巾之乱席卷天下。
 
-你是一名{self.state.player.rank}，
+你是一名{p.rank}，
 身处颍川，正是这场风暴的中心。
 
 乱世之中，英雄四起，枭雄并立。
 你的命运，将走向何方？
 """
-        print(intro)
+        if not self.silent:
+            print(intro)
 
     # ============ 战斗系统 ============
 
@@ -170,7 +217,7 @@ class SanguoEngine:
         elif session.winner == self.state.player:
             # 胜利：经验 + 名望 + 战利品
             self.state.player.food = max(0, self.state.player.food - session.attacker_damage)
-            exp_gain = 20 + session.defender_damage // 10
+            exp_gain = 30 + session.defender_damage // 8
             self.state.player.exp += exp_gain
             self.state.player.modify_stat("名", 2)
 
@@ -233,16 +280,49 @@ class SanguoEngine:
         return "\n".join(parts)
 
 
-    def show_market(self, FOOD_PRICE=10, FOOD_AMOUNT=15):
-        """市集：可以用金买粮，每10金换15粮"""
+    def show_market(self, FOOD_PRICE=10, FOOD_AMOUNT=15, FOOD_SELL_PRICE=8, FOOD_SELL_AMOUNT=15):
+        """市集：可以用金买粮，也可以卖粮换金
+        买：10金 → 15粮
+        卖：15粮 → 8金
+        """
         p = self.state.player
-        if p.gold < FOOD_PRICE:
-            print(f"盘缠不足，市集交易需要{FOOD_PRICE}金，你只有{p.gold}金。")
-            return
-        p.gold -= FOOD_PRICE
-        p.food += FOOD_AMOUNT
-        p.food = min(100, p.food)  # 上限100
-        print(f"📦 市集易货：你付出{FOOD_PRICE}金，买入{FOOD_AMOUNT}粮，当前金{p.gold}粮{p.food}。")
+        print(f"""━━━ {p.location} 市集 ━━━
+  🏪 粮食交易
+  • 买入：{FOOD_PRICE}金 → {FOOD_AMOUNT}粮
+  • 卖出：{FOOD_SELL_AMOUNT}粮 → {FOOD_SELL_PRICE}金
+  你当前：金={p.gold} 粮={p.food}
+  输入 'buy' 买入粮食，输入 'sell' 卖出粮食，输入 'leave' 离开""")
+
+    def handle_market_input(self, cmd):
+        """处理市集内的买卖命令"""
+        p = self.state.player
+        FOOD_PRICE = 10
+        FOOD_AMOUNT = 15
+        FOOD_SELL_PRICE = 8
+        FOOD_SELL_AMOUNT = 15
+
+        if cmd == "buy":
+            if p.gold < FOOD_PRICE:
+                print(f"盘缠不足，需要{FOOD_PRICE}金，你只有{p.gold}金。")
+                return False
+            p.gold -= FOOD_PRICE
+            p.food = min(100, p.food + FOOD_AMOUNT)
+            print(f"📦 买入：你付出{FOOD_PRICE}金，获得{FOOD_AMOUNT}粮。当前金{p.gold}粮{p.food}。")
+            return True
+        elif cmd == "sell":
+            if p.food < FOOD_SELL_AMOUNT:
+                print(f"粮食不足，需要{FOOD_SELL_AMOUNT}粮，你只有{p.food}粮。")
+                return False
+            p.food -= FOOD_SELL_AMOUNT
+            p.gold += FOOD_SELL_PRICE
+            print(f"💰 卖出：你付出{FOOD_SELL_AMOUNT}粮，获得{FOOD_SELL_PRICE}金。当前金{p.gold}粮{p.food}。")
+            return True
+        elif cmd == "leave":
+            print("你离开了市集。")
+            return True
+        else:
+            print("请输入 'buy' 或 'sell' 或 'leave'。")
+            return False
 
     def show_intel(self, cost=20):
         """花钱打听消息，获得所有重要NPC的当前位置和路线"""
@@ -322,11 +402,14 @@ class SanguoEngine:
             f"（消耗金{self.state.player.gold + cost}→{self.state.player.gold}，消耗体力{int(move_cost)}）",
             "",
             f"── {target_city} 城门 ──",
-            f"  🏪 市集 — 输入 'market' 10金买15粮",
+            f"  🏪 市集 — 输入 'market' 买卖粮食",
             f"  🍶 酒馆 — 输入 'intel' 打听消息（20金）",
         ]
         if encounter:
             result.append(f"\n{encounter}")
+
+        # 设置待处理市集状态（进城时提示）
+        self.pending_market = True
 
         return "\n".join(result)
 
@@ -383,6 +466,14 @@ class SanguoEngine:
         # 自然恢复
         self._natural_recovery()
 
+        # 随机事件（单挑/舌战/奇遇/凶兆）
+        random_results = []
+        try:
+            from random_events import trigger_random_events
+            random_results = trigger_random_events(self.state)
+        except Exception:
+            pass
+
         # ============ 战斗遭遇检查 ============
         combat_result = self._check_combat_encounter()
 
@@ -399,6 +490,7 @@ class SanguoEngine:
                 "time": f"{year}年{month}月",
                 "mandatory": mandatory_result,
                 "conditionals": conditional_results,
+                "random_events": random_results,
                 "combat": combat_result,
             }
 
@@ -408,6 +500,7 @@ class SanguoEngine:
                 "time": f"{year}年{month}月",
                 "mandatory": mandatory_result,
                 "conditionals": conditional_results,
+                "random_events": random_results,
                 "npc_encounter": encounter,
             }
 
@@ -415,6 +508,7 @@ class SanguoEngine:
             "time": f"{year}年{month}月",
             "mandatory": mandatory_result,
             "conditionals": conditional_results,
+            "random_events": random_results,
         }
 
     def _check_npc_encounter(self, max_distance=0):
@@ -483,7 +577,7 @@ class SanguoEngine:
 
         # 基础28%概率，随名望提升略微降低（名望越高，匪寇越少主动招惹）
         fame_mod = max(-0.05, -(p.get_stat("名") - 10) / 1000)
-        base_chance = 0.20 + fame_mod
+        base_chance = 0.25 + fame_mod
 
         # 已有战斗待处理
         if self.pending_combat:
@@ -947,6 +1041,28 @@ class SanguoEngine:
         except (ValueError, EOFError):
             pass
 
+        # ========== 转世业力处理（死亡时累加属性） ==========
+        karma_data = self._load_reincarnation()
+        karma_data["total_deaths"] = karma_data.get("total_deaths", 0) + 1
+        player_karma = karma_data.setdefault("karma", {})
+
+        carry_rates = config.REINCARNATION_CARRY_RATES
+        caps = config.REINCARNATION_CAPS
+        karma_gain = []
+        for stat in ["武", "智", "名", "魅", "运"]:
+            died_value = p.stats.get(stat, 0)
+            carry = int(died_value * carry_rates.get(stat, 0))
+            if carry > 0:
+                cap = caps.get(stat, 20)
+                before = player_karma.get(stat, 0)
+                player_karma[stat] = min(cap, before + carry)
+                karma_gain.append(f"{stat}+{carry}")
+
+        if karma_gain:
+            self._save_reincarnation(karma_data)
+            print(f"\n🌅 轮回之力：你将前世修为带往新生。")
+            print(f"   业力累积：{'、'.join(karma_gain)}")
+
         # 开始新游戏
         self.new_game()
 
@@ -975,6 +1091,50 @@ class SanguoEngine:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 """)
         self.running = False
+
+    def show_final_score(self):
+        """显示结局分数，统计本局成就"""
+        p = self.state.player
+        months = (self.state.year - 184) * 12 + self.state.month
+        years = months // 12
+        remaining_months = months % 12
+
+        # 评分维度
+        rank_score = {
+            "散兵": 1, "什长": 2, "伍长": 3, "队长": 4,
+            "曲长": 5, "司马": 7, "校尉": 10, "中郎将": 15,
+            "牙门将": 20, "偏将军": 30, "裨将军": 40,
+            "镇北将军": 60, "安南将军": 80, "车骑将军": 100,
+            "大将军": 150, "诸侯": 200
+        }
+        rank_pts = rank_score.get(p.rank, 1)
+
+        # 技能数
+        skill_pts = (len(p.active_skills) + len(p.passive_skills)) * 10
+
+        # 招募NPC
+        npc_pts = len([k for k, v in self.state.event_flags.items() if k.startswith("已招募_") and v]) * 15
+
+        # 属性
+        attr_pts = (p.get_stat("武") + p.get_stat("智") + p.get_stat("名") + p.get_stat("魅") + p.get_stat("运")) * 2
+
+        total = rank_pts + skill_pts + npc_pts + attr_pts + months
+
+        print(f"""
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+【本局评价】
+
+📅 游戏时长：{years}年{remaining_months}月
+🏅 最高官职：{p.rank} (+{rank_pts})
+⚔️ 习得技能：{len(p.active_skills)}主动 + {len(p.passive_skills)}被动 (+{skill_pts})
+👥 招募武将：{npc_pts // 15}人 (+{npc_pts})
+📊 属性总和：{p.get_stat("武")+p.get_stat("智")+p.get_stat("名")+p.get_stat("魅")+p.get_stat("运")} (+{attr_pts})
+🎯 存活回合：+{months}
+
+★ 总分：{total}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+""")
+        return total
 
     def save_game(self, path=None):
         if not path:
@@ -1070,6 +1230,16 @@ def main():
                     engine.show_status()
                 continue
 
+            # 如果在市集中
+            if engine.pending_market:
+                engine.show_market()
+                cmd = input("> ").strip()
+                done = engine.handle_market_input(cmd)
+                if done:
+                    engine.pending_market = False
+                    engine.show_status()
+                continue
+
             cmd = input("\n> ").strip()
             if not cmd:
                 continue
@@ -1093,16 +1263,37 @@ def main():
                 print(engine.move_to(arg))
                 engine.show_status()
             elif base_cmd == "market":
+                # 进入市集（设置pending状态进入交互循环）
+                engine.pending_market = True
                 engine.show_market()
+                cmd = input("> ").strip()
+                done = engine.handle_market_input(cmd)
+                if done:
+                    engine.pending_market = False
             elif base_cmd == "tick":
                 result = engine.tick()
                 if result is None and engine.state.is_game_over():
                     months = engine.state.get_elapsed_months()
-                    fragments = 5 + ((months + 5) // 6)
-                    engine.show_death_screen(fragments, months)
+                    # 到达220年 = 结局，不是死亡
+                    if engine.state.year >= END_YEAR and engine.state.player.hp > 0:
+                        engine.resolve_ending("three_kingdoms")
+                        # 结局后计算分数，重开新游戏
+                        engine.show_final_score()
+                        engine.new_game()
+                    else:
+                        # 死亡
+                        fragments = 5 + ((months + 5) // 6)
+                        engine.show_death_screen(fragments, months)
+                        engine.new_game()
                     continue
                 if result:
                     engine.show_status()
+                    # 随机事件（单挑/舌战/奇遇/凶兆）
+                    for evt in result.get("random_events", []):
+                        if evt.get("type") == "positive":
+                            print(f"\n✨【{evt['name']}】{evt['desc']}")
+                        elif evt.get("type") == "negative":
+                            print(f"\n💥【{evt['name']}】{evt['desc']}")
                     # 战斗遭遇
                     if result.get("combat"):
                         enemy = result["combat"]["enemy"]

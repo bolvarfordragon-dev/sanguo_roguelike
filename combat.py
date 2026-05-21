@@ -96,7 +96,7 @@ class CombatSession:
                 skill_damage_mod = 2.0
                 skill_risk_mod = 1.5
             elif active_skill == "dragon_valor":
-                # 龙胆：HP>50时武力+15（通过get_effective_stat处理）
+                # 龙胆：HP>50时武力+15（通过get_effective_stat处理，不在这里做额外操作）
                 pass
 
         action_info = self._get_action_info(player_action)
@@ -118,8 +118,15 @@ class CombatSession:
         effective_roll = dice / 100 + luck_mod
 
         # 暴击判定
-        is_crit = dice == 100 or (dice >= (95 - skill_crit_bonus) and self.attacker.get_stat("运") > 80)
-        is_fumble = dice == 1 or (dice <= 5 and self.defender.get_stat("运") > 80)
+        # 条件：骰出100，或 (骰出95+减暴击惩罚 且 攻击方运气>80)
+        # 特殊：skill_crit_bonus >= 100 时（暗箭），视为"必定暴击"，无运门槛
+        if skill_crit_bonus >= 100:
+            # 暗箭必定暴击：阈值降到-5以下，此时恒为True（暴击）
+            is_crit = dice >= (95 - skill_crit_bonus)  # dice >= -5 恒为True
+            is_fumble = dice == 1 or (dice <= 5 and self.defender.get_stat("运") > 80)
+        else:
+            is_crit = dice == 100 or (dice >= (95 - skill_crit_bonus) and self.attacker.get_stat("运") > 80)
+            is_fumble = dice == 1 or (dice <= 5 and self.defender.get_stat("运") > 80)
 
         # 胜负判定
         player_won = effective_roll <= win_rate
@@ -145,11 +152,15 @@ class CombatSession:
             self.attacker_damage = int(atk_troops * 0.1)
             self.defender_damage = int(def_troops * 0.05)
         elif player_won:
-            self.defender_damage = int(def_troops * (0.20 + random.random() * 0.15) * damage_mod * skill_damage_mod)
+            crit_mult = 2.0 if is_crit else 1.0
+            # DEBUG
+            # print(f"[DEBUG] dice={dice} is_crit={is_crit} crit_mult={crit_mult} skill_damage_mod={skill_damage_mod}")
+            self.defender_damage = int(def_troops * (0.20 + random.random() * 0.15) * damage_mod * skill_damage_mod * crit_mult)
             self.attacker_damage = int(atk_troops * (0.05 + random.random() * 0.08) * risk_mod * skill_risk_mod)
         else:
+            crit_mult = 2.0 if is_crit else 1.0
             self.attacker_damage = int(atk_troops * (0.20 + random.random() * 0.20) * risk_mod * skill_risk_mod)
-            self.defender_damage = int(def_troops * (0.08 + random.random() * 0.10) * damage_mod * skill_damage_mod)
+            self.defender_damage = int(def_troops * (0.08 + random.random() * 0.10) * damage_mod * skill_damage_mod * crit_mult)
 
         self.winner = self.attacker if player_won else self.defender
         self.loser = self.defender if player_won else self.attacker

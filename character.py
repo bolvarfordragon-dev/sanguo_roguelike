@@ -84,6 +84,10 @@ class Character:
         if "wei_strategy" in self.passive_skills and stat == "名":
             base += 10
 
+        # dragon_valor: HP>50时武力+15
+        if "dragon_valor" in self.active_skills and stat == "武" and self.hp > 50:
+            base += 15
+
         # brotherhood_oath: 好感度变化+50%（通过modify_relation处理，不在这里）
 
         return base
