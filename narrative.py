@@ -126,14 +126,15 @@ def narrate_death_report(player, cause, context=None):
 
 
 def format_character_info(player):
-    """格式化角色信息"""
+    """格式化角色信息（手机优化版）"""
     stats = player.stats
+    hp_bar = "".join(["✅" if i < player.hp else "⬜" for i in range(10)][:player.hp//10])
     return (
         f"【{player.name}】{player.rank}\n"
-        f"  武:{stats.get('武',0):3d} | 智:{stats.get('智',0):3d} | 名:{stats.get('名',0):3d} | 魅:{stats.get('魅',0):3d} | 运:{stats.get('运',0):3d}\n"
-        f"  气血:{player.hp:3d}/100 | 士气:{player.morale:3d}/100 | 体力:{player.stamina:3d}/100\n"
-        f"  金:{player.gold} | 粮:{player.food} | 经验:{player.exp}\n"
-        f"  位置:{player.location}"
+        f"⚔️ 武{stats.get('武',0)} 🧠 智{stats.get('智',0)} 📜 名{stats.get('名',0)} 💫 魅{stats.get('魅',0)} 🍀 运{stats.get('运',0)}\n"
+        f"❤️ {player.hp}/100 {hp_bar} 💪{player.morale} ⚡{player.stamina}\n"
+        f"💰{player.gold}金 🍖{player.food}粮 📈exp{player.exp}\n"
+        f"📍 {player.location}"
     )
 
 
