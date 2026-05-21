@@ -138,18 +138,12 @@ class SanguoEngine:
             if parts:
                 karma_str = f"\n【转世】前世修为：{'、'.join(parts)}\n"
 
-        intro = f"""{'-'*50}
+        intro = f"""{'─'*50}
 ⚔️  三国文字Roguelike ⚔️
-{'-'*50}
-
-{"中平元年（184年）春".center(40)}
-
-{karma_str}黄巾之乱席卷天下。
-
-你是一名{p.rank}，
-身处颍川，正是这场风暴的中心。
-
-乱世之中，英雄四起，枭雄并立。
+{'─'*50}
+📅 {p.rank} | 📍 颍川
+{karma_str}
+黄巾乱世，英雄四起。
 你的命运，将走向何方？
 """
         if not self.silent:
@@ -726,10 +720,10 @@ class SanguoEngine:
         """显示当前状态"""
         p = self.state.player
         time_str = self.state.get_time_str()
-        print(f"\n{'─'*40}")
+        print(f"\n─────────────")
         print(f"📅 {time_str} | 📍 {p.location}")
         print(format_character_info(p))
-        print(f"{'─'*40}")
+        print(f"─────────────")
 
     def handle_npc_encounter(self, choice):
         """处理 NPC 遭遇对话选项"""
