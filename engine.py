@@ -1153,18 +1153,18 @@ class SanguoEngine:
 
 def print_help():
     print("""
-┌──────────────────────┐
-│     可用命令          │
-├──────────────────────┤
-│ status   - 显示状态   │
-│ map      - 查看地图   │
-│ move [城] - 移动      │
-│ market   - 集市买粮   │
-│ tick     - 推进时间   │
-│ save     - 保存游戏   │
-│ help     - 显示帮助   │
-│ quit     - 退出       │
-└──────────────────────┘
+📖 命令帮助
+─────────────
+1/2/3/4  - 战斗选择（进攻/坚守/撤退/用计）
+t        - 推进时间（1个月）
+s        - 查看状态
+m        - 查看地图
+move [城]- 移动到某城市
+market   - 集市买卖
+int      - NPC情报
+h        - 显示帮助
+q        - 退出
+─────────────
 """)
 
 
@@ -1172,8 +1172,7 @@ def main():
     engine = SanguoEngine()
     engine.new_game()
 
-    print("\n📖 输入 'help' 查看命令")
-    print("📖 输入 'map' 查看地图")
+    print("\n📖 输入 'h' 查看命令 | 'm' 查看地图")
 
     while engine.running:
         try:
@@ -1247,6 +1246,24 @@ def main():
             parts = cmd.split(maxsplit=1)
             base_cmd = parts[0].lower()
             arg = parts[1] if len(parts) > 1 else ""
+
+            # 别名映射
+            alias_map = {
+                "t": "tick", "tick": "tick",
+            }
+            if base_cmd in alias_map:
+                base_cmd = alias_map[base_cmd]
+            # 处理单字符别名
+            if base_cmd in ["s", "st"]:  # status
+                base_cmd = "status"
+            elif base_cmd in ["m", "mp"]:  # map
+                base_cmd = "map"
+            elif base_cmd in ["i", "int"]:  # intel
+                base_cmd = "intel"
+            elif base_cmd in ["h", "?", "help"]:  # help
+                base_cmd = "help"
+            elif base_cmd in ["q", "quit", "exit"]:  # quit
+                base_cmd = "quit"
 
             if base_cmd == "help":
                 print_help()
