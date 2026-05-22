@@ -1,0 +1,13 @@
+{
+  "name": "sanguo-roguelike",
+  "description": "三国文字Roguelike - Web UI",
+  "repository": "https://github.com/bolvarfordragon-dev/sanguo_roguelike",
+  "region": "singapore",
+  "plan": "free",
+  "buildCommand": "pip install -r requirements.txt",
+  "startCommand": "python3 api.py",
+  "envVars": {
+    "FLASK_ENV": "production"
+  },
+  "healthCheckPath": "/api/state"
+}

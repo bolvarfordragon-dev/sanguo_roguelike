@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>三国文字Roguelike</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div id="app">
+    <!-- Start Screen -->
+    <div id="start-screen" class="screen active">
+        <div class="title-block">
+            <h1>⚔️ 三国文字Roguelike ⚔️</h1>
+            <p class="subtitle">黄巾乱世，英雄四起</p>
+        </div>
+        <button id="btn-new-game" class="btn-primary btn-large">开始新游戏</button>
+    </div>
+
+    <!-- Game Screen -->
+    <div id="game-screen" class="screen">
+        <!-- Top bar -->
+        <div class="top-bar">
+            <div class="time-loc">
+                <span id="disp-time">184年1月</span>
+                <span class="sep">|</span>
+                <span id="disp-loc">颍川</span>
+            </div>
+            <div class="rank-name">
+                <span id="disp-rank">散兵</span>
+                <span class="sep">|</span>
+                <span id="disp-name">英雄</span>
+            </div>
+        </div>
+
+        <!-- Stats bar -->
+        <div class="stats-bar">
+            <div class="stat-item" title="生命">
+                <span class="stat-icon">❤️</span>
+                <div class="stat-bar-wrap"><div id="bar-hp" class="stat-bar" style="width:100%"></div></div>
+                <span id="val-hp" class="stat-val">100</span>
+            </div>
+            <div class="stat-item" title="士气">
+                <span class="stat-icon">💪</span>
+                <div class="stat-bar-wrap"><div id="bar-morale" class="stat-bar morale-bar" style="width:80%"></div></div>
+                <span id="val-morale" class="stat-val">80</span>
+            </div>
+            <div class="stat-item" title="体力">
+                <span class="stat-icon">⚡</span>
+                <div class="stat-bar-wrap"><div id="bar-stamina" class="stat-bar stamina-bar" style="width:100%"></div></div>
+                <span id="val-stamina" class="stat-val">100</span>
+            </div>
+            <div class="stat-item" title="金钱">
+                <span class="stat-icon">💰</span>
+                <span id="val-gold" class="stat-val">50</span>
+            </div>
+            <div class="stat-item" title="粮草">
+                <span class="stat-icon">🍖</span>
+                <span id="val-food" class="stat-val">50</span>
+            </div>
+            <div class="stat-item" title="经验">
+                <span class="stat-icon">📈</span>
+                <span id="val-exp" class="stat-val">0</span>
+            </div>
+        </div>
+
+        <!-- Main stats display -->
+        <div class="main-stats">
+            <span class="attr-tag">⚔️武<span id="stat-wu">40</span></span>
+            <span class="attr-tag">🧠智<span id="stat-zhi">30</span></span>
+            <span class="attr-tag">📜名<span id="stat-ming">10</span></span>
+            <span class="attr-tag">💫魅<span id="stat-mei">20</span></span>
+            <span class="attr-tag">🍀运<span id="stat-yun">30</span></span>
+        </div>
+
+        <!-- Narrative area -->
+        <div id="narrative-area" class="narrative-area"></div>
+
+        <!-- Action Panel -->
+        <div id="action-panel" class="action-panel"></div>
+
+        <!-- Bottom nav -->
+        <div class="bottom-nav">
+            <button class="nav-btn" onclick="apiMap()">📍地图</button>
+            <button class="nav-btn" onclick="apiTick()">⏭️下月</button>
+            <button class="nav-btn" onclick="apiStatus()">📊状态</button>
+        </div>
+    </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
