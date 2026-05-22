@@ -409,6 +409,7 @@ def status():
     return jsonify(api.show_status())
 
 if __name__ == "__main__":
-    print("三国文字Roguelike API Server")
-    print("Open http://localhost:5000")
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    import os
+    port = int(os.environ.get("PORT", 5000))
+    print(f"三国文字Roguelike API Server — Port {port}")
+    app.run(host="0.0.0.0", port=port, debug=False)
