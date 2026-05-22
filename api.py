@@ -353,7 +353,7 @@ class SanguoAPI:
 from flask import Flask, jsonify, request, send_from_directory
 
 api = SanguoAPI()
-app = Flask(__name__, static_folder="web", static_url_path="/static")
+app = Flask(__name__, static_folder="web", static_url_path="")
 
 @app.route("/")
 def index():
