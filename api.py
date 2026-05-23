@@ -296,9 +296,11 @@ class SanguoAPI:
         try:
             self.engine.handle_npc_encounter(str(choice))
         finally:
+            output = sys.stdout.getvalue()
             sys.stdout = old_stdout
 
-        self._add_narrative("")  # narrative already printed by engine
+        if output.strip():
+            self._add_narrative(output.strip())
         return self.get_state()
 
     def market_action(self, cmd):
