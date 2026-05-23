@@ -61,6 +61,10 @@ async function apiVisitTavern() {
     return callAPI('POST', '/tavern');
 }
 
+async function apiTavernChoice(choiceIdx) {
+    return callAPI('POST', '/tavern_choice', { choice: String(choiceIdx) });
+}
+
 // ── UI Functions ──────────────────────────────────────
 function showScreen(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -134,6 +138,7 @@ function renderActionPanel(state) {
     if (ui === 'combat') renderCombat(state, panel);
     else if (ui === 'npc') renderNpc(state, panel);
     else if (ui === 'market') renderMarket(state, panel);
+    else if (ui === 'tavern_choice') renderTavernChoice(state, panel);
     else renderNormal(state, panel);
 }
 
@@ -190,6 +195,18 @@ function renderMarket(state, panel) {
             <button class="action-btn danger" onclick="doMarket('leave')">🚶 离开市集</button>
         </div>
     `;
+}
+
+function renderTavernChoice(state, panel) {
+    const npcs = state.tavern_npcs || [];
+    let html = '<div class="tavern-info">🍶 酒馆中有数人，请选择拜访：</div>';
+    html += '<div class="action-row" style="flex-direction:column;gap:6px">';
+    npcs.forEach(npc => {
+        html += `<button class="action-btn" onclick="doTavernChoice('${npc.id}')">${npc.name}（${npc.rank}）</button>`;
+    });
+    html += '</div>';
+    html += '<div class="action-row" style="margin-top:6px"><button class="action-btn" onclick="doTavernCancel()">← 离开酒馆</button></div>';
+    panel.innerHTML = html;
 }
 
 function renderNormal(state, panel) {
@@ -300,6 +317,19 @@ async function doIntelAuto() {
 
 async function doVisitTavern() {
     const state = await apiVisitTavern();
+    if (!state || state.game_status === 'error') return;
+    applyState(state);
+}
+
+async function doTavernChoice(npcId) {
+    const state = await apiTavernChoice(npcId);
+    if (!state || state.game_status === 'error') return;
+    applyState(state);
+}
+
+async function doTavernCancel() {
+    // Resolve choice 0 (cancel) to exit tavern
+    const state = await apiTavernChoice(0);
     if (!state || state.game_status === 'error') return;
     applyState(state);
 }

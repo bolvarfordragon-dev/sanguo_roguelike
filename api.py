@@ -20,6 +20,7 @@ from engine import SanguoEngine
 from combat import COMBAT_ACTIONS
 from skills import get_skill
 from world import get_adjacent_cities, find_path, REGIONS
+from npc_schedule import is_npc_active, get_npc_location
 
 
 def capture_output(func):
@@ -243,7 +244,11 @@ class SanguoAPI:
             } if ui_state == "market" else None,
             "available_moves": adj,
             "map": self._get_map_data(),
+            "tavern_npcs": getattr(self, '_tavern_npcs', None),
         }
+        if ui_state == "tavern_choice" and hasattr(self, '_tavern_npcs'):
+            state["tavern_npcs"] = [{"id": str(i+1), "name": n.name, "rank": n.rank} for i, n in enumerate(self._tavern_npcs)]
+        return state
 
     def _get_map_data(self):
         """Return map data for current player position."""
@@ -323,21 +328,66 @@ class SanguoAPI:
         return self.get_state()
 
     def visit_tavern(self):
-        """Visit tavern — check for NPC encounter in current city without time advance."""
-        old_stdout = sys.stdout
-        sys.stdout = StringIO()
-        try:
-            encounter = self.engine._check_npc_encounter(max_distance=0)
-        finally:
-            sys.stdout = old_stdout
+        """Visit tavern — list NPCs in current city, no random roll."""
+        p = self.engine.state.player
+        current_year = self.engine.state.year
+        current_loc = p.location
 
-        if encounter:
-            self.engine.pending_npc_encounter = encounter
-            npc = encounter["npc"]
-            self._add_narrative(f"🎭 {npc.name}（{npc.rank}）正在此处。")
-        else:
+        npcs_here = []
+        for npc_name, npc in self.engine.state.npcs.items():
+            if npc.hp <= 0:
+                continue
+            if not is_npc_active(npc_name, current_year):
+                continue
+            npc_loc = get_npc_location(npc_name, current_year)
+            if npc_loc == current_loc:
+                npcs_here.append(npc)
+
+        if not npcs_here:
             self._add_narrative("🍶 酒馆里冷冷清清，未遇故人。")
-        return self.get_state()
+            return self.get_state()
+
+        # If only one NPC, trigger encounter directly
+        if len(npcs_here) == 1:
+            npc = npcs_here[0]
+            encounter = {"type": "npc_encounter", "npc_name": npc.name, "npc": npc}
+            self.engine.pending_npc_encounter = encounter
+            self._add_narrative(f"🎭 {npc.name}（{npc.rank}）正在此处。")
+            return self.get_state()
+
+        # Multiple NPCs: list them and let player choose
+        lines = ["🍶 酒馆中数人聚坐："]
+        for i, npc in enumerate(npcs_here, 1):
+            lines.append(f"  {i}. {npc.name}（{npc.rank}）")
+        lines.append("请选择要拜访的对象（输入数字），或输入 0 离开。")
+        self._add_narrative("\n".join(lines))
+
+        # Store NPC list for player choice resolution
+        self._tavern_npcs = npcs_here
+        state = self.get_state()
+        state["ui_state"] = "tavern_choice"
+        state["tavern_npcs"] = [{"id": str(i+1), "name": n.name, "rank": n.rank} for i, n in enumerate(npcs_here)]
+        return state
+
+    def resolve_tavern_choice(self, choice_idx):
+        """Resolve player's choice in tavern (when multiple NPCs present)."""
+        if not hasattr(self, '_tavern_npcs') or not self._tavern_npcs:
+            return self.get_state()
+        npcs = self._tavern_npcs
+        self._tavern_npcs = None
+        try:
+            idx = int(choice_idx) - 1
+            if idx < 0 or idx >= len(npcs):
+                self._add_narrative("你离开了酒馆。")
+                return self.get_state()
+            npc = npcs[idx]
+            encounter = {"type": "npc_encounter", "npc_name": npc.name, "npc": npc}
+            self.engine.pending_npc_encounter = encounter
+            self._add_narrative(f"🎭 {npc.name}（{npc.rank}）正在此处。")
+            return self.get_state()
+        except (ValueError, TypeError):
+            self._add_narrative("无效输入。")
+            return self.get_state()
 
     def show_map(self):
         """Show map."""
@@ -434,6 +484,12 @@ def enter_market():
 @app.route("/api/tavern", methods=["POST"])
 def visit_tavern():
     return jsonify(api.visit_tavern())
+
+@app.route("/api/tavern_choice", methods=["POST"])
+def tavern_choice():
+    data = request.json or {}
+    choice = data.get("choice", "0")
+    return jsonify(api.resolve_tavern_choice(choice))
 
 if __name__ == "__main__":
     import os

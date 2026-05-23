@@ -176,6 +176,9 @@ body {
 .city-actions .tavern-btn { background: #1a0a1a; border-color: #8a4a8a; color: #cc88cc; }
 .city-actions .intel-btn { background: #0a1a0a; border-color: #4a4a8a; color: #8888cc; }
 
+/* Tavern choice */
+.tavern-info { text-align: center; padding: 8px; background: #1a0a1a; border-radius: 6px; border: 1px solid #8a4a8a; font-size: 14px; margin-bottom: 8px; }
+
 /* Map grid layout - horizontal two column */
 .map-grid {
     display: grid;
