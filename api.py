@@ -359,7 +359,7 @@ class SanguoAPI:
         lines = ["🍶 酒馆中数人聚坐："]
         for i, npc in enumerate(npcs_here, 1):
             lines.append(f"  {i}. {npc.name}（{npc.rank}）")
-        lines.append("请选择要拜访的对象（输入数字），或输入 0 离开。")
+        lines.append("点击其中一人开始交谈。")
         self._add_narrative("\n".join(lines))
 
         # Store NPC list for player choice resolution
