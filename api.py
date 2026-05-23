@@ -372,6 +372,7 @@ class SanguoAPI:
     def resolve_tavern_choice(self, choice_idx):
         """Resolve player's choice in tavern (when multiple NPCs present)."""
         if not hasattr(self, '_tavern_npcs') or not self._tavern_npcs:
+            self._add_narrative("你离开了酒馆。")
             return self.get_state()
         npcs = self._tavern_npcs
         self._tavern_npcs = None
@@ -380,14 +381,35 @@ class SanguoAPI:
             if idx < 0 or idx >= len(npcs):
                 self._add_narrative("你离开了酒馆。")
                 return self.get_state()
-            npc = npcs[idx]
-            encounter = {"type": "npc_encounter", "npc_name": npc.name, "npc": npc}
-            self.engine.pending_npc_encounter = encounter
-            self._add_narrative(f"🎭 {npc.name}（{npc.rank}）正在此处。")
-            return self.get_state()
         except (ValueError, TypeError):
             self._add_narrative("无效输入。")
             return self.get_state()
+        npc = npcs[idx]
+        encounter = {"type": "npc_encounter", "npc_name": npc.name, "npc": npc}
+        self.engine.pending_npc_encounter = encounter
+        # Manually set npc_data so get_state() returns proper UI for NPC encounter
+        p = self.engine.state.player
+        rel = p.get_relation(npc.name)
+        if rel >= 70: rel_tag = "【亲密】"
+        elif rel >= 40: rel_tag = "【友善】"
+        elif rel >= 10: rel_tag = "【中立】"
+        elif rel >= -10: rel_tag = "【冷淡】"
+        else: rel_tag = "【疏远】"
+        self._pending_npc_data = {
+            "name": npc.name, "rank": npc.rank,
+            "relation": rel, "relation_tag": rel_tag,
+            "options": [
+                {"id": "1", "label": "诚心相邀", "desc": "表达敬意，邀其共举大事"},
+                {"id": "2", "label": "以利诱之", "desc": "赠金三十（需30金）"},
+                {"id": "3", "label": "晓以大义", "desc": "以天下苍生为由（需名望≥50）"},
+                {"id": "4", "label": "威逼利诱", "desc": "软硬兼施（需20金，有风险）"},
+                {"id": "5", "label": "交谈", "desc": "与对方交谈"},
+                {"id": "6", "label": "索取情报", "desc": "请其透露天下局势"},
+                {"id": "7", "label": "离开", "desc": "拱手作别"},
+            ],
+        }
+        self._add_narrative(f"🎭 {npc.name}（{npc.rank}）正在此处。")
+        return self.get_state()
 
     def show_map(self):
         """Show map."""
