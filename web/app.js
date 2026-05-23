@@ -53,6 +53,10 @@ async function apiShowStatus() {
     return callAPI('POST', '/status');
 }
 
+async function apiEnterMarket() {
+    return callAPI('POST', '/enter_market');
+}
+
 // ── UI Functions ──────────────────────────────────────
 function showScreen(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -185,27 +189,38 @@ function renderMarket(state, panel) {
 }
 
 function renderNormal(state, panel) {
+    // ── Render normal (city arrival) state ──
+    // Show: adjacent city moves + market/intel shortcuts
     const moves = state.available_moves || [];
-    panel.innerHTML = `
-        <div class="action-row">
-            ${moves.map(city => `
-                <button class="action-btn" onclick="doMove('${city}')">📍 ${city}</button>
-            `).join('')}
-        </div>
-    `;
+    let html = '<div class="action-row city-actions">';
+    html += `<button class="action-btn market-btn" onclick="doMarketAuto()">🏪 市集<div class="btn-sub">买卖粮草</div></button>`;
+    html += `<button class="action-btn intel-btn" onclick="doIntelAuto()">📰 情报<div class="btn-sub">20金打听NPC</div></button>`;
+    html += '</div>';
+
+    if (moves.length > 0) {
+        html += '<div class="action-row">';
+        moves.forEach(city => {
+            html += `<button class="action-btn" onclick="doMove('${city}')">📍 ${city}</button>`;
+        });
+        html += '</div>';
+    }
+    panel.innerHTML = html;
 }
 
 function renderMapView(state, panel) {
     const map = state.map;
-    let html = '<div class="map-area">';
+    let html = '<div class="map-grid">';
     Object.entries(map.regions).forEach(([regKey, regData]) => {
-        html += `<div class="map-region-title">${regData.name}</div>`;
+        html += `<div class="map-region">
+            <div class="map-region-title">${regData.name}</div>`;
         regData.cities.forEach(city => {
-            let cls = 'map-city';
+            let cls = 'map-city-btn';
             if (city === map.current) cls += ' current';
             else if (map.current && state.available_moves && state.available_moves.includes(city)) cls += ' adjacent';
-            html += `<div class="${cls}">${city === map.current ? '★ ' : '　 '}${city}</div>`;
+            const icon = city === map.current ? '★' : (state.available_moves && state.available_moves.includes(city) ? '→' : '·');
+            html += `<button class="${cls}" onclick="doMove('${city}')">${icon} ${city}</button>`;
         });
+        html += '</div>';
     });
     html += '</div>';
     html += '<div class="action-row" style="margin-top:8px"><button class="action-btn" onclick="renderActionPanel(currentState)">← 返回</button></div>';
@@ -258,6 +273,24 @@ async function doMarket(cmd) {
     const state = await apiMarket(cmd);
     if (!state || state.game_status === 'error') return;
     applyState(state);
+}
+
+// Enter market UI
+async function doMarketAuto() {
+    const state = await apiEnterMarket();
+    if (!state || state.game_status === 'error') return;
+    applyState(state);
+}
+
+// Intel without full state replacement (adds to narrative only)
+async function doIntelAuto() {
+    const state = await apiIntel();
+    if (!state || state.game_status === 'error') return;
+    if (state.narrative) addNarrative(state.narrative);
+    if (currentState && state.player) {
+        currentState.player.gold = state.player.gold;
+        document.getElementById('val-gold').textContent = state.player.gold;
+    }
 }
 
 async function doShowMap() {

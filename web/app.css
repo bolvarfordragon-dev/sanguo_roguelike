@@ -170,12 +170,34 @@ body {
 .npc-name { font-size: 18px; color: var(--gold); font-weight: bold; }
 .rel-tag { font-size: 12px; color: var(--text-dim); }
 
-/* Map */
-.map-area { font-size: 13px; line-height: 1.6; padding: 8px; }
-.map-region-title { color: var(--gold); font-weight: bold; margin-top: 6px; }
-.map-city { color: var(--text); padding: 2px 0; }
-.map-city.current { color: var(--gold); }
-.map-city.adjacent { color: #88cc88; }
+/* City action shortcuts (market + intel in normal state) */
+.city-actions { justify-content: center; }
+.city-actions .market-btn { background: #0a1a0a; border-color: #2e8b57; color: #66cc66; }
+.city-actions .intel-btn { background: #0a1a0a; border-color: #4a4a8a; color: #8888cc; }
+
+/* Map grid layout - horizontal two column */
+.map-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px 16px;
+    padding: 8px;
+}
+.map-region { display: flex; flex-direction: column; gap: 2px; }
+.map-region-title { color: var(--gold); font-weight: bold; margin-bottom: 4px; font-size: 14px; }
+.map-city-btn {
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 14px;
+    text-align: left;
+    padding: 3px 6px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+.map-city-btn:hover { background: #2a1f0a; }
+.map-city-btn.current { color: var(--gold); font-weight: bold; }
+.map-city-btn.adjacent { color: #88cc88; }
 
 /* Scrollbar */
 .narrative-area::-webkit-scrollbar { width: 4px; }

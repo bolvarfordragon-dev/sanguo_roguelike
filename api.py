@@ -408,6 +408,12 @@ def game_map():
 def status():
     return jsonify(api.show_status())
 
+@app.route("/api/enter_market", methods=["POST"])
+def enter_market():
+    api.engine.pending_market = True
+    state = api.get_state()
+    return jsonify(state)
+
 if __name__ == "__main__":
     import os
     port = int(os.environ.get("PORT", 5000))
