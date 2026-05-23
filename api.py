@@ -322,6 +322,23 @@ class SanguoAPI:
         self._add_narrative(output)
         return self.get_state()
 
+    def visit_tavern(self):
+        """Visit tavern — check for NPC encounter in current city without time advance."""
+        old_stdout = sys.stdout
+        sys.stdout = StringIO()
+        try:
+            encounter = self.engine._check_npc_encounter(max_distance=0)
+        finally:
+            sys.stdout = old_stdout
+
+        if encounter:
+            self.engine.pending_npc_encounter = encounter
+            npc = encounter["npc"]
+            self._add_narrative(f"🎭 {npc.name}（{npc.rank}）正在此处。")
+        else:
+            self._add_narrative("🍶 酒馆里冷冷清清，未遇故人。")
+        return self.get_state()
+
     def show_map(self):
         """Show map."""
         old_stdout = sys.stdout
@@ -413,6 +430,10 @@ def enter_market():
     api.engine.pending_market = True
     state = api.get_state()
     return jsonify(state)
+
+@app.route("/api/tavern", methods=["POST"])
+def visit_tavern():
+    return jsonify(api.visit_tavern())
 
 if __name__ == "__main__":
     import os

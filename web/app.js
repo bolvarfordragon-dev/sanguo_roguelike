@@ -57,6 +57,10 @@ async function apiEnterMarket() {
     return callAPI('POST', '/enter_market');
 }
 
+async function apiVisitTavern() {
+    return callAPI('POST', '/tavern');
+}
+
 // ── UI Functions ──────────────────────────────────────
 function showScreen(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -194,6 +198,7 @@ function renderNormal(state, panel) {
     const moves = state.available_moves || [];
     let html = '<div class="action-row city-actions">';
     html += `<button class="action-btn market-btn" onclick="doMarketAuto()">🏪 市集<div class="btn-sub">买卖粮草</div></button>`;
+    html += `<button class="action-btn tavern-btn" onclick="doVisitTavern()">🍶 酒馆<div class="btn-sub">拜访/打听</div></button>`;
     html += `<button class="action-btn intel-btn" onclick="doIntelAuto()">📰 情报<div class="btn-sub">20金打听NPC</div></button>`;
     html += '</div>';
 
@@ -291,6 +296,12 @@ async function doIntelAuto() {
         currentState.player.gold = state.player.gold;
         document.getElementById('val-gold').textContent = state.player.gold;
     }
+}
+
+async function doVisitTavern() {
+    const state = await apiVisitTavern();
+    if (!state || state.game_status === 'error') return;
+    applyState(state);
 }
 
 async function doShowMap() {

@@ -170,9 +170,10 @@ body {
 .npc-name { font-size: 18px; color: var(--gold); font-weight: bold; }
 .rel-tag { font-size: 12px; color: var(--text-dim); }
 
-/* City action shortcuts (market + intel in normal state) */
+/* City action shortcuts (market + tavern + intel in normal state) */
 .city-actions { justify-content: center; }
 .city-actions .market-btn { background: #0a1a0a; border-color: #2e8b57; color: #66cc66; }
+.city-actions .tavern-btn { background: #1a0a1a; border-color: #8a4a8a; color: #cc88cc; }
 .city-actions .intel-btn { background: #0a1a0a; border-color: #4a4a8a; color: #8888cc; }
 
 /* Map grid layout - horizontal two column */
