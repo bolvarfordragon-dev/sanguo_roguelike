@@ -107,10 +107,19 @@ class Character:
         """检查是否可以升级，返回是否升级成功"""
         next_rank = self._get_next_rank()
         if next_rank and self.exp >= config.RANK_EXP_REQUIRE.get(next_rank, 99999):
+            old_rank = self.rank
             self.rank = next_rank
             # 升级时全属性小幅提升
             for k in self.stats:
                 self.stats[k] = min(100, self.stats[k] + random.randint(1, 3))
+            # 更新本局最高官职（成就系统用）
+            if hasattr(self, '_engine_ref') and self._engine_ref.state:
+                rs = self._engine_ref.state.run_stats
+                new_idx = config.RANK_ORDER.index(next_rank)
+                old_idx = rs.get("highest_rank_idx", 0)
+                if new_idx > old_idx:
+                    rs["highest_rank_idx"] = new_idx
+                    rs["highest_rank"] = next_rank
             return True
         return False
 

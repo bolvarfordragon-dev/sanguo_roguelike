@@ -348,6 +348,35 @@ async function doShowStatus() {
     applyState(state);
 }
 
+async function doShowAchievements() {
+    const data = await callAPI('GET', '/achievements');
+    renderAchievementsPanel(data);
+    showScreen('achievements-panel');
+}
+
+function renderAchievementsPanel(data) {
+    const list = document.getElementById('ach-list');
+    if (!list || !data) return;
+    list.innerHTML = `<div class="ach-summary">已解锁：${data.unlocked} / ${data.total}</div>`;
+    data.achievements.forEach(ach => {
+        const cls = ach.unlocked ? 'ach-item unlocked' : 'ach-item locked';
+        const status = ach.unlocked ? '✅' : '🔒';
+        const desc = ach.unlocked ? ach.desc : '???';
+        list.innerHTML += `
+            <div class="${cls}">
+                <div class="ach-icon">${ach.icon}</div>
+                <div class="ach-info">
+                    <div class="ach-name">${status} ${ach.name}</div>
+                    <div class="ach-desc">${desc}</div>
+                </div>
+            </div>`;
+    });
+}
+
+function closeAchievements() {
+    showScreen('game-screen');
+}
+
 async function doIntel() {
     const state = await apiIntel();
     if (!state || state.game_status === 'error') return;

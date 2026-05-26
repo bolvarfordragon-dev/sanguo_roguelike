@@ -21,6 +21,7 @@ from combat import COMBAT_ACTIONS
 from skills import get_skill
 from world import get_adjacent_cities, find_path, REGIONS
 from npc_schedule import is_npc_active, get_npc_location
+from achievements import ACHIEVEMENTS, load_achievements, get_achievement_by_id
 
 
 def capture_output(func):
@@ -245,10 +246,29 @@ class SanguoAPI:
             "available_moves": adj,
             "map": self._get_map_data(),
             "tavern_npcs": getattr(self, '_tavern_npcs', None),
+            "achievements": self._get_achievements_data(),
         }
         if ui_state == "tavern_choice" and hasattr(self, '_tavern_npcs'):
             state["tavern_npcs"] = [{"id": str(i+1), "name": n.name, "rank": n.rank} for i, n in enumerate(self._tavern_npcs)]
         return state
+
+    def _get_achievements_data(self):
+        """Return achievements data for the UI panel."""
+        unlocked_ids = load_achievements(config.ACHIEVEMENTS_FILE)
+        return {
+            "total": len(ACHIEVEMENTS),
+            "unlocked": len(unlocked_ids),
+            "achievements": [
+                {
+                    "id": ach.id,
+                    "name": ach.name,
+                    "desc": ach.desc,
+                    "icon": ach.icon,
+                    "unlocked": ach.id in unlocked_ids,
+                }
+                for ach in ACHIEVEMENTS
+            ],
+        }
 
     def _get_map_data(self):
         """Return map data for current player position."""
@@ -514,6 +534,11 @@ def tavern_choice():
     data = request.json or {}
     choice = data.get("choice", "0")
     return jsonify(api.resolve_tavern_choice(choice))
+
+@app.route("/api/achievements", methods=["GET"])
+def api_achievements():
+    """Return full achievements data for the UI panel."""
+    return jsonify(api._get_achievements_data())
 
 if __name__ == "__main__":
     import os

@@ -207,3 +207,42 @@ body {
 .narrative-area::-webkit-scrollbar { width: 4px; }
 .narrative-area::-webkit-scrollbar-track { background: transparent; }
 .narrative-area::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+/* ── Achievements Panel ── */
+#achievements-panel {
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    z-index: 100;
+    padding: 20px;
+    overflow-y: auto;
+}
+.ach-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 12px;
+}
+.ach-header h2 { margin: 0; color: var(--gold); }
+.ach-summary {
+    text-align: center;
+    color: var(--gold);
+    margin-bottom: 16px;
+    font-size: 16px;
+}
+.ach-list { display: flex; flex-direction: column; gap: 10px; }
+.ach-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+}
+.ach-item.unlocked { border-color: var(--gold); background: #1a1508; }
+.ach-item.locked { opacity: 0.5; background: #0d0d0d; }
+.ach-icon { font-size: 28px; flex-shrink: 0; }
+.ach-info { flex: 1; }
+.ach-name { font-weight: bold; color: var(--text); margin-bottom: 4px; }
+.ach-desc { font-size: 13px; color: #888; }

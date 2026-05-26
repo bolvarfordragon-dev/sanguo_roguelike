@@ -86,7 +86,16 @@
             <button class="nav-btn" onclick="doShowMap()">📍地图</button>
             <button class="nav-btn" onclick="doTick()">⏭️下月</button>
             <button class="nav-btn" onclick="doShowStatus()">📊状态</button>
-            <button class="nav-btn" onclick="doIntel()">📰情报</button>
+            <button class="nav-btn" onclick="doShowAchievements()">🏆成就</button>
+        </div>
+
+        <!-- Achievements Panel (overlay) -->
+        <div id="achievements-panel" class="screen">
+            <div class="ach-header">
+                <h2>🏆 成就列表</h2>
+                <button class="action-btn" onclick="closeAchievements()">← 返回</button>
+            </div>
+            <div id="ach-list" class="ach-list"></div>
         </div>
     </div>
 </div>

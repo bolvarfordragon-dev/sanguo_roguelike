@@ -65,22 +65,23 @@ REINCARNATION_FILE = "sanguo_roguelike/reincarnation.json"
 # ============ 转世加成（死后继承）===========
 # 死亡时，各属性按此比例转化为业力（永久累积）
 REINCARNATION_CARRY_RATES = {
-    "武": 0.20,   # 武力转世率 20%
-    "智": 0.15,   # 智谋转世率 15%
-    "名": 0.15,   # 名望转世率 15%
-    "魅": 0.20,   # 魅力转世率 20%
-    "运": 0.10,   # 运气转世率 10%
+    "武": 0.10,   # 武力转世率 10%（配合高cap实现长循环）
+    "智": 0.08,   # 智谋转世率 8%
+    "名": 0.08,   # 名望转世率 8%
+    "魅": 0.10,   # 魅力转世率 10%
+    "运": 0.05,   # 运气转世率 5%
 }
-# 各属性业力累加上限（防止无限膨胀）
+# 各属性业力累加上限（让 roguelike 循环可跑 20+ 轮）
 REINCARNATION_CAPS = {
-    "武": 30,
-    "智": 25,
-    "名": 20,
-    "魅": 20,
-    "运": 15,
+    "武": 200,
+    "智": 150,
+    "名": 120,
+    "魅": 120,
+    "运": 80,
 }
 
 
 SAVE_DIR = "sanguo_roguelike/saves"
 UNLOCK_FILE = "sanguo_roguelike/unlocks.json"
 HISTORY_FILE = "sanguo_roguelike/history_records.jsonl"
+ACHIEVEMENTS_FILE = "sanguo_roguelike/achievements.json"

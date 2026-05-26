@@ -19,6 +19,14 @@ class GameState:
         self.event_flags = {}    # 事件标记（如"讨董已触发"）
         self.global_flags = {}   # 全局状态标记
         self.turn_count = 0
+        # 本局统计（每局重置）
+        self.run_stats = {
+            "battles_this_run": 0,
+            "npcs_recruited_this_run": [],
+            "events_triggered_this_run": 0,
+            "highest_rank": "散兵",
+            "total_exp_earned": 0,
+        }
 
     def tick(self):
         """推进一个月"""

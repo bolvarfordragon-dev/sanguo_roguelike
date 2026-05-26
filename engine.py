@@ -24,6 +24,7 @@ from events.conditional import (
     taoyuan_oath_event, huarong_road_event, three_visits_to_zhuge_event
 )
 from progression import Progression
+from achievements import ACHIEVEMENTS, check_achievements, load_achievements, save_achievements, get_achievement_by_id
 from npc_schedule import get_npc_location, is_npc_active, is_faction_leader, is_major_hero
 from skills import get_skill, SKILLS, can_learn_skill
 
@@ -69,6 +70,8 @@ class SanguoEngine:
         self.pending_choice = None   # 待处理的选择
         self.silent = silent
         self._init_progression()
+        self._unlocked_achievements = load_achievements(config.ACHIEVEMENTS_FILE)
+        self._pending_achievement_msgs = []  # queued achievement unlock messages
 
     def _init_progression(self):
         os.makedirs(os.path.dirname(config.UNLOCK_FILE), exist_ok=True)
@@ -114,9 +117,18 @@ class SanguoEngine:
             player.reincarnation_karma = {}
             self._reinc_msg = None
 
+        player._engine_ref = self  # 供 Character.check_level_up 更新最高官职
         self.state.set_player(player)
         self._init_npcs()
         self.running = True
+        # 同步转世数据到本局状态（成就系统使用）
+        self.state.run_stats["total_deaths"] = reinc_data.get("total_deaths", 0)
+        self.state.run_stats["battles_this_run"] = 0
+        self.state.run_stats["npcs_recruited_this_run"] = []
+        self.state.run_stats["events_triggered_this_run"] = 0
+        self.state.run_stats["highest_rank"] = config.INITIAL_RANK
+        self.state.run_stats["highest_rank_idx"] = 0
+        self.state.run_stats["total_exp_earned"] = 0
         self._print_intro()
 
     def _init_npcs(self):
@@ -245,6 +257,7 @@ class SanguoEngine:
                 self.state.player.take_damage(random.randint(10, 30))
             narrative = session.get_full_narrative()
 
+        self.state.run_stats["battles_this_run"] = self.state.run_stats.get("battles_this_run", 0) + 1
         self.pending_combat = None
         return narrative
 
@@ -480,6 +493,7 @@ class SanguoEngine:
 
         # 优先处理战斗
         if combat_result:
+            self._check_achievements()
             return {
                 "time": f"{year}年{month}月",
                 "mandatory": mandatory_result,
@@ -490,6 +504,7 @@ class SanguoEngine:
 
         if encounter:
             self.pending_npc_encounter = encounter
+            self._check_achievements()
             return {
                 "time": f"{year}年{month}月",
                 "mandatory": mandatory_result,
@@ -498,12 +513,36 @@ class SanguoEngine:
                 "npc_encounter": encounter,
             }
 
+        self._check_achievements()
         return {
             "time": f"{year}年{month}月",
             "mandatory": mandatory_result,
             "conditionals": conditional_results,
             "random_events": random_results,
         }
+
+    def _check_achievements(self):
+        """检查所有成就是否满足解锁条件，打印并保存"""
+        newly = check_achievements(self.state, self._unlocked_achievements)
+        for ach in newly:
+            self._unlocked_achievements.add(ach.id)
+            # 打印成就解锁消息
+            msg = f"\n🏆 成就解锁：「{ach.name}」- {ach.desc}"
+            if ach.karma_reward > 0:
+                msg += f" (+{ach.karma_reward}业力)"
+            if not self.silent:
+                print(msg)
+            self._pending_achievement_msgs.append(msg)
+            # 应用业力奖励
+            if ach.karma_reward > 0:
+                karma_data = self._load_reincarnation()
+                player_karma = karma_data.setdefault("karma", {})
+                # 分配到随机一项属性
+                stat = ["武", "智", "名", "魅", "运"][self.state.turn_count % 5]
+                player_karma[stat] = player_karma.get(stat, 0) + ach.karma_reward
+                self._save_reincarnation(karma_data)
+        if newly:
+            save_achievements(config.ACHIEVEMENTS_FILE, self._unlocked_achievements)
 
     def _check_npc_encounter(self, max_distance=0):
         """检查是否触发 NPC 遭遇
@@ -856,6 +895,9 @@ class SanguoEngine:
         if success:
             self.state.event_flags[f"已招募_{npc.name}"] = True
             p.modify_relation(npc.name, 20)
+            # 记录本局招募
+            if npc.name not in self.state.run_stats.get("npcs_recruited_this_run", []):
+                self.state.run_stats.setdefault("npcs_recruited_this_run", []).append(npc.name)
             gift = NPC_GIFT_SKILLS.get(npc.name)
             gift_msg = ""
             if gift:
@@ -867,30 +909,6 @@ class SanguoEngine:
         else:
             penalty = -10 if strategy == "coerce" else -5
             p.modify_relation(npc.name, penalty)
-            msgs = {
-                "sincere": f"\n{npc.name}摇头拒绝：「容我三思。」",
-                "bribe": f"\n{npc.name}冷笑：「这点钱想收买我？」\n（金-{cost}，好感度{penalty}）",
-                "righteous": f"\n{npc.name}沉吟不语，最终摇头离去。",
-                "coerce": f"\n{npc.name}怒道：「你当我是什么人！」拂袖而去。\n（金-{cost}，好感度{penalty}）",
-            }
-            return False, msgs.get(strategy, "")
-
-        if success:
-            self.state.event_flags[f"已招募_{npc.name}"] = True
-            self.state.player.modify_relation(npc.name, 20)
-            # NPC赠送技能
-            gift = NPC_GIFT_SKILLS.get(npc.name)
-            gift_msg = ""
-            if gift:
-                skill = get_skill(gift["skill_id"])
-                if skill:
-                    self.state.player.add_skill(gift["skill_id"])
-                    gift_msg = f"\n「你我共事，我有一技相赠——」\n「此乃'{skill.name}'，愿你善用之。」\n（获得技能：{skill.name}）"
-            return True, f"\n{npc.name}点头应允，愿意加入麾下！\n（{npc.name}已加入队伍，好感度+20）{gift_msg}"
-        else:
-            # 失败好感度变化
-            penalty = -10 if strategy == "coerce" else -5
-            self.state.player.modify_relation(npc.name, penalty)
             msgs = {
                 "sincere": f"\n{npc.name}摇头拒绝：「容我三思。」",
                 "bribe": f"\n{npc.name}冷笑：「这点钱想收买我？」\n（金-{cost}，好感度{penalty}）",
@@ -964,32 +982,51 @@ class SanguoEngine:
                 return c["effect"](self.state)
         return None
 
-    def show_death_screen(self, fragments_earned, months_survived):
-        """显示死亡界面（遗产商店）"""
+    def show_death_screen(self, fragments_earned, months_survived,
+                          battles=0, npcs_recruited=None,
+                          highest_rank=None, events_triggered=0,
+                          exp_earned=0):
+        """显示死亡界面（遗产商店 + 本局结算 + 转世叙事）"""
         from skills import SKILLS, can_learn_skill, get_skill
+
+        if npcs_recruited is None:
+            npcs_recruited = []
+        if highest_rank is None:
+            highest_rank = self.state.player.rank if self.state.player else "散兵"
 
         p = self.state.player
         p.inheritance_fragments += fragments_earned
 
+        years_survived = months_survived // 12
+        months_remain = months_survived % 12
+        npc_list = ', '.join(npcs_recruited) if npcs_recruited else '无'
+
         print(f"""
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 💀 你已陨于乱世
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-存活时间：{self.state.year - 184}年{months_survived % 12}月
-获得传承碎片：+{fragments_earned}枚
-当前持有：{p.inheritance_fragments}枚
+📊 【本局总结】
+  ⏱️  存活时间：{years_survived}年{months_remain}月
+  ⚔️  战斗次数：{battles}次
+  👥  招募NPC：{len(npcs_recruited)}人（{npc_list}）
+  🏅  最高官职：{highest_rank}
+  🎁  获得传承碎片：+{fragments_earned}枚
+  📈  本局获得经验值：{exp_earned}
+  📜  触发历史事件：{events_triggered}次
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📦 传承商店
+📦 【传承商店】
+  当前碎片余额：{p.inheritance_fragments}枚
 
 【传承主动技能】
 """)
 
-        # 显示可购买技能
+        # 显示可购买技能（带描述）
         active_skills = []
         passive_skills = []
         for sid, skill in SKILLS.items():
-            if skill.cost == 0:  # 跳过NPC赠送技能
+            if skill.cost == 0:
                 continue
             can_learn, reason = can_learn_skill(sid, p)
             if skill.skill_type == "active":
@@ -1001,21 +1038,23 @@ class SanguoEngine:
         choices = []
         for sid, skill, can_learn, reason in active_skills:
             if can_learn:
-                print(f"  {idx}. {skill.name} - {skill.cost}碎片 - {skill.desc}")
+                print(f"  {idx}. {skill.name} [{skill.cost}碎片] - {skill.desc}")
                 choices.append(sid)
                 idx += 1
 
         print(f"\n【传承被动技能】")
         for sid, skill, can_learn, reason in passive_skills:
             if can_learn:
-                print(f"  {idx}. {skill.name} - {skill.cost}碎片 - {skill.desc}")
+                print(f"  {idx}. {skill.name} [{skill.cost}碎片] - {skill.desc}")
                 choices.append(sid)
                 idx += 1
+
+        if not choices:
+            print("  （暂无可购买技能）")
 
         print(f"""
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 输入数字购买技能，输入 0 直接开始新游戏
-当前碎片：{p.inheritance_fragments}枚
 > """, end="")
 
         try:
@@ -1031,18 +1070,19 @@ class SanguoEngine:
                         print(f"✅ 习得技能：{skill.name}！剩余碎片：{p.inheritance_fragments}枚")
                     else:
                         print("碎片不足！")
-                # 输入0或无效 -> 开始新游戏
         except (ValueError, EOFError):
             pass
 
-        # ========== 转世业力处理（死亡时累加属性） ==========
+        # ========== 转世叙事强化 ==========
         karma_data = self._load_reincarnation()
         karma_data["total_deaths"] = karma_data.get("total_deaths", 0) + 1
+        total_lives = karma_data["total_deaths"]
         player_karma = karma_data.setdefault("karma", {})
 
         carry_rates = config.REINCARNATION_CARRY_RATES
         caps = config.REINCARNATION_CAPS
-        karma_gain = []
+        karma_gain_display = []
+        karma_gain_values = {}
         for stat in ["武", "智", "名", "魅", "运"]:
             died_value = p.stats.get(stat, 0)
             carry = int(died_value * carry_rates.get(stat, 0))
@@ -1050,12 +1090,37 @@ class SanguoEngine:
                 cap = caps.get(stat, 20)
                 before = player_karma.get(stat, 0)
                 player_karma[stat] = min(cap, before + carry)
-                karma_gain.append(f"{stat}+{carry}")
+                karma_gain_values[stat] = carry
+                karma_gain_display.append(f"{stat}+{carry}")
 
-        if karma_gain:
-            self._save_reincarnation(karma_data)
-            print(f"\n🌅 轮回之力：你将前世修为带往新生。")
-            print(f"   业力累积：{'、'.join(karma_gain)}")
+        self._save_reincarnation(karma_data)
+
+        # 叙事：灵魂游荡 + 轮回叙事
+        print(f"""
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🌀 你的灵魂在乱世中游荡...
+   轮回之力将你重新投入193年的风暴中。
+
+   本局业力累积：{'、'.join(karma_gain_display) if karma_gain_display else '无'}
+
+🌅 你已完成 {total_lives} 次轮回。
+   当前总业力：
+""")
+        for stat, val in player_karma.items():
+            if val > 0:
+                print(f"   {stat}：{val}")
+
+        # ========== 转世成功动画文字 ==========
+        print(f"""
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✨【转世成功】✨
+   轮回数：{total_lives}世
+   本次转世加成：{'、'.join(karma_gain_display) if karma_gain_display else '无'}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+""")
+
+        # 成就系统：检查死亡相关成就
+        self._check_achievements()
 
         # 开始新游戏
         self.new_game()
@@ -1292,10 +1357,18 @@ def main():
                         engine.show_final_score()
                         engine.new_game()
                     else:
-                        # 死亡
+                        # 死亡：传递本局统计
                         fragments = 5 + ((months + 5) // 6)
-                        engine.show_death_screen(fragments, months)
-                        engine.new_game()
+                        rs = engine.state.run_stats
+                        engine.show_death_screen(
+                            fragments_earned=fragments,
+                            months_survived=months,
+                            battles=rs.get("battles_this_run", 0),
+                            npcs_recruited=rs.get("npcs_recruited_this_run", []),
+                            highest_rank=rs.get("highest_rank", engine.state.player.rank),
+                            events_triggered=rs.get("events_triggered_this_run", 0),
+                            exp_earned=rs.get("total_exp_earned", 0),
+                        )
                     continue
                 if result:
                     engine.show_status()
