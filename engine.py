@@ -249,9 +249,13 @@ class SanguoEngine:
 
             loot_line = f"\n📦 战利品：金+{gold_loot}，粮+{food_loot}{merc_msg}{frag_msg}"
             narrative = session.get_full_narrative() + loot_line
+            # 战斗中胜利 +3 城市好感度
+            self._modify_city_favorability(self.state.player.location, config.CITY_FAVORABILITY["battle_win_gain"])
         else:
             # 战败
             self.state.player.food = max(0, self.state.player.food - session.attacker_damage)
+            # 战斗中失败 -5 城市好感度
+            self._modify_city_favorability(self.state.player.location, -config.CITY_FAVORABILITY["battle_loss_penalty"])
             self.state.player.morale = max(10, self.state.player.morale - 15)
             if session.attacker_damage > session.defender_damage * 2:
                 self.state.player.take_damage(random.randint(10, 30))
@@ -472,6 +476,9 @@ class SanguoEngine:
 
         # 自然恢复
         self._natural_recovery()
+
+        # ============ 城市好感度每月变化 ============
+        self._tick_city_favorability()
 
         # 随机事件（单挑/舌战/奇遇/凶兆）
         random_results = []
@@ -755,6 +762,53 @@ class SanguoEngine:
             if "饥饿" in p.effects:
                 p.effects.remove("饥饿")
 
+    def _tick_city_favorability(self):
+        """每月城市好感度变化：玩家所在城市+1，其他城市不变"""
+        cf = self.state.city_favorability
+        if not cf:
+            cf = {}
+        player_city = self.state.player.location
+        cf[player_city] = cf.get(player_city, config.CITY_FAVORABILITY["neutral"]) + config.CITY_FAVORABILITY["monthly_gain"]
+        cf[player_city] = min(100, cf[player_city])
+        self.state.city_favorability = cf
+
+    def _modify_city_favorability(self, city, delta):
+        """增减城市好感度"""
+        cf = self.state.city_favorability
+        if not cf:
+            cf = {}
+        cf[city] = cf.get(city, config.CITY_FAVORABILITY["neutral"]) + delta
+        cf[city] = max(0, min(100, cf[city]))
+        self.state.city_favorability = cf
+
+    def get_city_favorability(self, city):
+        """获取城市好感度（未设置则返回中立50）"""
+        return self.state.city_favorability.get(city, config.CITY_FAVORABILITY["neutral"])
+
+    def get_market_price_mod(self, city):
+        """根据城市好感度返回市场价格修正（负数=折扣）"""
+        fav = self.get_city_favorability(city)
+        cfg = config.CITY_FAVORABILITY
+        if fav >= cfg["allied_threshold"]:
+            return -0.20
+        elif fav >= cfg["friendly_threshold"]:
+            return -0.10
+        elif fav <= cfg["hostile_threshold"]:
+            return 0.15
+        return 0.0
+
+    def get_recruit_bonus(self, city):
+        """根据城市好感度返回招募加成（正数=成功率提升）"""
+        fav = self.get_city_favorability(city)
+        cfg = config.CITY_FAVORABILITY
+        if fav >= cfg["allied_threshold"]:
+            return 0.20
+        elif fav >= cfg["friendly_threshold"]:
+            return 0.10
+        elif fav <= cfg["hostile_threshold"]:
+            return -0.20
+        return 0.0
+
     def show_status(self):
         """显示当前状态"""
         p = self.state.player
@@ -898,6 +952,19 @@ class SanguoEngine:
             # 记录本局招募
             if npc.name not in self.state.run_stats.get("npcs_recruited_this_run", []):
                 self.state.run_stats.setdefault("npcs_recruited_this_run", []).append(npc.name)
+            # 在该城市招募 +5 好感度
+            self._modify_city_favorability(self.state.player.location, config.CITY_FAVORABILITY["recruit_gain"])
+            # 主线预告：首次加入曹操或孙权阵营
+            if npc.name in ("曹操", "孙权") and not self.state.event_flags.get(f"主线预告_{npc.name}", False):
+                self.state.event_flags[f"主线预告_{npc.name}"] = True
+                preview_texts = {
+                    "曹操": "你投身曹操麾下，操已席卷中原，挟天子以令诸侯。然而袁绍才是眼前大敌，官渡之战一触即发——你的谋略将决定天下的走向。",
+                    "孙权": "你归入孙权帐下，江东基业有待稳固。然而曹操已定荆州，虎视江东，赤壁之战迫在眉睫——这便是你的第一个考验。",
+                }
+                self.state.active_events.append({
+                    "name": "主线预告",
+                    "desc": preview_texts.get(npc.name, ""),
+                })
             gift = NPC_GIFT_SKILLS.get(npc.name)
             gift_msg = ""
             if gift:

@@ -27,6 +27,8 @@ class GameState:
             "highest_rank": "散兵",
             "total_exp_earned": 0,
         }
+        # 城市好感度 {city_name: 0-100, neutral=50}
+        self.city_favorability = {}
 
     def tick(self):
         """推进一个月"""
@@ -76,6 +78,7 @@ class GameState:
             "event_flags": self.event_flags,
             "global_flags": self.global_flags,
             "npcs": {name: npc.to_dict() for name, npc in self.npcs.items()},
+            "city_favorability": self.city_favorability,
         }
         with open(path, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
@@ -92,6 +95,7 @@ class GameState:
         state.turn_count = data.get("turn_count", 0)
         state.event_flags = data.get("event_flags", {})
         state.global_flags = data.get("global_flags", {})
+        state.city_favorability = data.get("city_favorability", {})
         if data.get("player"):
             state.player = Character.from_dict(data["player"])
         state.npcs = {}
@@ -112,4 +116,5 @@ class GameState:
             "player_rank": self.player.rank if self.player else None,
             "player_location": self.player.location if self.player else None,
             "event_flags": list(self.event_flags.keys()),
+            "city_favorability": self.city_favorability,
         }

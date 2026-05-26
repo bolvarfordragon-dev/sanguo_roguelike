@@ -202,6 +202,10 @@ body {
 .map-city-btn:hover { background: #2a1f0a; }
 .map-city-btn.current { color: var(--gold); font-weight: bold; }
 .map-city-btn.adjacent { color: #88cc88; }
+.map-city-btn.other-city { color: #555; }
+.map-city-wrap { display: flex; align-items: center; }
+.city-actions .map-btn { background: #0a1a2a; border-color: #4a6a8a; color: #88aacc; }
+
 
 /* Scrollbar */
 .narrative-area::-webkit-scrollbar { width: 4px; }

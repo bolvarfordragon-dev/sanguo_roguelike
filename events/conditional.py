@@ -3,6 +3,7 @@
 满足特定条件时触发的事件（命运/随机遭遇）
 """
 import random
+from npc_schedule import get_npc_location
 
 
 class ConditionalEvent:
@@ -161,8 +162,15 @@ def get_default_conditional_events():
 def taoyuan_oath_event():
     """桃园结义条件事件 — 需要刘备、关羽、张飞同时在场"""
     def condition(state):
-        # 需要在涿郡 + 刘备关羽张飞都存在且存活
+        # 桃园结义：涿郡（184-186年期间，三人相聚于涿郡）
+        # 刘备在184-186年于颍川（四处征战），关羽张飞在涿郡
+        # 简化：检查玩家是否在涿郡 + 名望达标 + 与刘备关系非负 + 未触发
+        if state.year < 184 or state.year > 186:
+            return False
         if state.player.location != "涿郡":
+            return False
+        # 名望不足
+        if state.player.get_stat("名") < 60:
             return False
         required = ["刘备", "关羽", "张飞"]
         for npc in required:
@@ -181,7 +189,7 @@ def taoyuan_oath_event():
         return {
             "name": "桃园结义",
             "desc": (
-                "刘备、关羽、张飞相遇于涿郡。\n"
+                "刘备、关羽、张飞相遇于涿郡郊外。\n"
                 "三人志同道合，欲共举大事。\n"
                 "刘备见你亦在附近，邀你一同加入。\n\n"
                 "你愿意与刘关张结为异姓兄弟吗？"
@@ -210,15 +218,24 @@ def taoyuan_oath_event():
     )
 
 
+
 def _accept_taoyuan(state):
     state.event_flags["桃园结义_已加入"] = True
     state.player.modify_relation("刘备", 50)
     state.player.modify_relation("关羽", 50)
     state.player.modify_relation("张飞", 50)
     state.player.modify_stat("名", 20)
+    state.player.add_skill("brotherhood_oath")
+    # 主线预告：首次加入刘备阵营
+    if not state.event_flags.get("主线预告_刘备", False):
+        state.event_flags["主线预告_刘备"] = True
+        state.active_events.append({
+            "name": "主线预告",
+            "desc": "你与刘备结为兄弟，麾下义士渐多。然而董卓才是眼前大敌，废立天子，祸乱朝纲，天下诸侯共愤——这便是你的下一个考验。",
+        })
     return {
         "result": "success",
-        "text": "你与刘备、关羽、张飞于桃园中结为异姓兄弟。\n不求同年同月同日生，但愿同年同月同日死。\n你的名望大幅提升。",
+        "text": "你与刘备、关羽、张飞于桃园中结为异姓兄弟。\n不求同年同月同日生，但愿同年同月同日死。\n你的名望大幅提升，并获得被动技能「义结金兰」！",
     }
 
 

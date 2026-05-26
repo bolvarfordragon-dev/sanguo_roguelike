@@ -100,6 +100,19 @@ function updateStats(state) {
     const p = state.player;
     document.getElementById('disp-time').textContent = state.time;
     document.getElementById('disp-loc').textContent = p.location;
+    // Show city favorability next to location
+    const locEl = document.getElementById('disp-loc');
+    const fav = (state.city_favorability && state.city_favorability[p.location]) || 50;
+    const favColor = fav >= 70 ? '#88cc88' : (fav <= 30 ? '#cc4444' : '#9a7620');
+    const favBar = `<span style="font-size:11px;color:${favColor};margin-left:4px">❤${fav}</span>`;
+    if (!locEl.dataset.favbar) {
+        locEl.dataset.favbar = '1';
+        const wrapper = document.createElement('span');
+        wrapper.id = 'fav-bar';
+        locEl.parentNode.insertBefore(wrapper, locEl.nextSibling);
+    }
+    const fb = document.getElementById('fav-bar');
+    if (fb) fb.innerHTML = favBar;
     document.getElementById('disp-rank').textContent = p.rank;
     document.getElementById('disp-name').textContent = p.name;
 
@@ -210,13 +223,14 @@ function renderTavernChoice(state, panel) {
 }
 
 function renderNormal(state, panel) {
-    // ── Render normal (city arrival) state ──
+    // ── Render normal (city arrival) state ─
     // Show: adjacent city moves + market/intel shortcuts
     const moves = state.available_moves || [];
     let html = '<div class="action-row city-actions">';
     html += `<button class="action-btn market-btn" onclick="doMarketAuto()">🏪 市集<div class="btn-sub">买卖粮草</div></button>`;
     html += `<button class="action-btn tavern-btn" onclick="doVisitTavern()">🍶 酒馆<div class="btn-sub">拜访/打听</div></button>`;
     html += `<button class="action-btn intel-btn" onclick="doIntelAuto()">📰 情报<div class="btn-sub">20金打听NPC</div></button>`;
+    html += `<button class="action-btn map-btn" onclick="doShowMap()">🗺️ 地图<div class="btn-sub">查看地图</div></button>`;
     html += '</div>';
 
     if (moves.length > 0) {
@@ -231,16 +245,33 @@ function renderNormal(state, panel) {
 
 function renderMapView(state, panel) {
     const map = state.map;
+    const cf = state.city_favorability || {};
+    function getFavColor(city) {
+        const fav = cf[city] || 50;
+        if (fav >= 70) return '#2e8b57';
+        if (fav >= 90) return '#88cc88';
+        if (fav <= 30) return '#8b0000';
+        return '#9a7620';
+    }
+    function getFavBar(city) {
+        const fav = cf[city] || 50;
+        const color = getFavColor(city);
+        return `<span style="display:inline-block;width:30px;height:4px;background:${color};border-radius:2px;vertical-align:middle;margin-left:4px"></span>`;
+    }
     let html = '<div class="map-grid">';
     Object.entries(map.regions).forEach(([regKey, regData]) => {
         html += `<div class="map-region">
             <div class="map-region-title">${regData.name}</div>`;
         regData.cities.forEach(city => {
+            const isCurrent = city === map.current;
+            const isAdjacent = state.available_moves && state.available_moves.includes(city);
             let cls = 'map-city-btn';
-            if (city === map.current) cls += ' current';
-            else if (map.current && state.available_moves && state.available_moves.includes(city)) cls += ' adjacent';
-            const icon = city === map.current ? '★' : (state.available_moves && state.available_moves.includes(city) ? '→' : '·');
-            html += `<button class="${cls}" onclick="doMove('${city}')">${icon} ${city}</button>`;
+            if (isCurrent) cls += ' current';
+            else if (isAdjacent) cls += ' adjacent';
+            else cls += ' other-city';
+            const icon = isCurrent ? '★' : (isAdjacent ? '→' : '·');
+            const favBar = getFavBar(city);
+            html += `<div class="map-city-wrap"><button class="${cls}" onclick="doMove('${city}')">${icon} ${city}</button>${favBar}</div>`;
         });
         html += '</div>';
     });

@@ -247,6 +247,7 @@ class SanguoAPI:
             "map": self._get_map_data(),
             "tavern_npcs": getattr(self, '_tavern_npcs', None),
             "achievements": self._get_achievements_data(),
+            "city_favorability": self.engine.state.city_favorability,
         }
         if ui_state == "tavern_choice" and hasattr(self, '_tavern_npcs'):
             state["tavern_npcs"] = [{"id": str(i+1), "name": n.name, "rank": n.rank} for i, n in enumerate(self._tavern_npcs)]
