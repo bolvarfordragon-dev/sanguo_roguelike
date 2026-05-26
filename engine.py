@@ -23,6 +23,9 @@ from events.conditional import (
     get_default_conditional_events,
     taoyuan_oath_event, huarong_road_event, three_visits_to_zhuge_event
 )
+from events.choices import get_choice_events, check_choice_events
+from campaigns import CAMPAIGNS, check_campaign_trigger, get_campaign_by_id
+from equipment import DROP_CHANCE, get_random_equipment, EQUIPMENT_SLOTS
 from progression import Progression
 from achievements import ACHIEVEMENTS, check_achievements, load_achievements, save_achievements, get_achievement_by_id
 from npc_schedule import get_npc_location, is_npc_active, is_faction_leader, is_major_hero
@@ -68,6 +71,10 @@ class SanguoEngine:
         self.pending_npc_encounter = None  # 待处理的NPC遭遇
         self.pending_market = False  # 待处理的市集交互
         self.pending_choice = None   # 待处理的选择
+        self.pending_campaign = None # 待处理的战役（显示介绍界面）
+        self.pending_equipment = None  # 待处理的装备掉落替换
+        self.active_campaign = None  # 当前进行中的战役
+        self.campaign_months_left = 0  # 战役剩余月数
         self.silent = silent
         self._init_progression()
         self._unlocked_achievements = load_achievements(config.ACHIEVEMENTS_FILE)
@@ -247,7 +254,19 @@ class SanguoEngine:
                 self.state.player.inheritance_fragments += frag
                 frag_msg = f"\n拾获战场遗落的传承碎片 ×{frag}！"
 
-            loot_line = f"\n📦 战利品：金+{gold_loot}，粮+{food_loot}{merc_msg}{frag_msg}"
+            # 装备掉落（20%概率）
+            equip_drop_msg = ""
+            if random.random() < DROP_CHANCE:
+                eq = get_random_equipment()
+                if len(self.state.player.equipment) < EQUIPMENT_SLOTS:
+                    self.state.player.add_equipment(eq)
+                    equip_drop_msg = f"\n⚙️ 拾获装备「{eq['name']}」！{eq['desc']}"
+                else:
+                    # Slots full — set pending equipment choice
+                    self.pending_equipment = eq
+                    equip_drop_msg = f"\n⚙️ 可选择替换装备「{eq['name']}」（装备槽已满）"
+
+            loot_line = f"\n📦 战利品：金+{gold_loot}，粮+{food_loot}{merc_msg}{frag_msg}{equip_drop_msg}"
             narrative = session.get_full_narrative() + loot_line
             # 战斗中胜利 +3 城市好感度
             self._modify_city_favorability(self.state.player.location, config.CITY_FAVORABILITY["battle_win_gain"])
@@ -453,10 +472,98 @@ class SanguoEngine:
 
     # ============ 时间推进 ============
 
+    def _check_campaign(self):
+        """Check if a campaign should trigger this tick. Returns Campaign or None."""
+        # If already active, handle campaign tick
+        if self.active_campaign:
+            self.campaign_months_left -= 1
+            if self.campaign_months_left <= 0:
+                # Campaign ended — award reward
+                campaign = self.active_campaign
+                self.active_campaign = None
+                self.campaign_months_left = 0
+                flag = f"campaign_{campaign.id}_resolved"
+                self.state.event_flags[flag] = True
+                self.state.event_flags[f"campaign_{campaign.id}_completed"] = True
+                # Award one of the rewards
+                if campaign.rewards:
+                    reward = campaign.rewards[0]
+                    if reward["type"] == "equipment":
+                        eq = dict(reward)
+                        eq.pop("type")
+                        if self.state.player.add_equipment(eq):
+                            pass
+                    elif reward["type"] == "skill":
+                        skill_id = reward.get("skill_id")
+                        if skill_id:
+                            self.state.player.add_skill(skill_id)
+                return None
+            return None
+
+        # Check for new campaign trigger
+        campaign = check_campaign_trigger(self.state)
+        if campaign:
+            self.pending_campaign = campaign
+        return campaign
+
+    def _process_campaign_combat(self, enemy, ctx):
+        """Wrap a combat encounter with campaign modifiers."""
+        campaign = self.active_campaign
+        if campaign:
+            for stat in enemy.stats:
+                enemy.stats[stat] = int(enemy.stats[stat] * 1.3)
+            enemy.troops = int(enemy.troops * 1.3)
+        return {"enemy": enemy, "ctx": ctx}
+
+    def _tick_campaign(self):
+        """Tick active campaign state (extra food consumption)."""
+        if not self.active_campaign:
+            return
+        # Double food consumption during campaign
+        self.state.player.food = max(0, self.state.player.food - 3)
+
+
     def tick(self):
         """推进一个月"""
         self.state.tick()
         year, month = self.state.year, self.state.month
+
+        # 检查战役状态
+        self._tick_campaign()
+
+        # 检查选择事件
+        choice_event = check_choice_events(self.state)
+        if choice_event:
+            self.pending_choice = choice_event
+            return {
+                "time": f"{year}年{month}月",
+                "choice_event": {
+                    "id": choice_event.id,
+                    "name": choice_event.name,
+                    "description": choice_event.description,
+                    "options": [
+                        {"id": opt["id"], "label": opt["label"], "desc": opt["desc"]}
+                        for opt in choice_event.options
+                    ],
+                },
+            }
+
+        # 检查战役触发
+        campaign = self._check_campaign()
+        if campaign:
+            self.pending_campaign = campaign
+            return {
+                "time": f"{year}年{month}月",
+                "campaign_pending": {
+                    "id": campaign.id,
+                    "name": campaign.name,
+                    "description": campaign.description,
+                    "duration": campaign.duration,
+                    "rewards": campaign.rewards,
+                    "side_choice": campaign.side_choice,
+                    "combat_intro": campaign.combat_intro,
+                },
+            }
 
         # 检查必然事件
         mandatory_result = trigger_mandatory_event(self.state, year, month)
@@ -497,6 +604,37 @@ class SanguoEngine:
         if self.state.is_game_over():
             self.running = False
             return None
+
+        # 优先处理战役介绍
+        if self.pending_campaign:
+            self._check_achievements()
+            return {
+                "time": f"{year}年{month}月",
+                "pending_campaign": {
+                    "id": self.pending_campaign.id,
+                    "name": self.pending_campaign.name,
+                    "description": self.pending_campaign.description,
+                    "duration": self.pending_campaign.duration,
+                    "rewards": self.pending_campaign.rewards,
+                    "side_choice": self.pending_campaign.side_choice,
+                },
+            }
+
+        # 优先处理选择事件
+        if self.pending_choice:
+            self._check_achievements()
+            return {
+                "time": f"{year}年{month}月",
+                "choice_event": {
+                    "id": self.pending_choice.id,
+                    "name": self.pending_choice.name,
+                    "description": self.pending_choice.description,
+                    "options": [
+                        {"id": opt["id"], "label": opt["label"], "desc": opt["desc"]}
+                        for opt in self.pending_choice.options
+                    ],
+                },
+            }
 
         # 优先处理战斗
         if combat_result:
@@ -1048,6 +1186,46 @@ class SanguoEngine:
             if c["id"] == choice_id:
                 return c["effect"](self.state)
         return None
+
+    def handle_campaign_choice(self, accept, side=None):
+        """Handle player's accept/decline for a pending campaign."""
+        campaign = self.pending_campaign
+        if not campaign:
+            return
+        self.pending_campaign = None
+        flag = f"campaign_{campaign.id}_resolved"
+        self.state.event_flags[flag] = True
+        if not accept:
+            self.state.event_flags[f"campaign_{campaign.id}_skipped"] = True
+            return
+        # Accept: start campaign
+        self.active_campaign = campaign
+        self.campaign_months_left = campaign.duration
+        self.state.event_flags[f"campaign_{campaign.id}_active"] = True
+        if side and campaign.side_choice:
+            self.state.event_flags[f"campaign_{campaign.id}_side"] = side
+
+    def handle_equipment_choice(self, slot_index):
+        """Replace equipment at slot_index with pending equipment drop."""
+        if self.pending_equipment is None:
+            return
+        if slot_index is not None:
+            self.state.player.remove_equipment(slot_index)
+        self.state.player.add_equipment(self.pending_equipment)
+        self.pending_equipment = None
+
+    def handle_choice_event(self, choice_id):
+        """Handle player's choice selection from a choice_event."""
+        if not self.pending_choice:
+            return
+        evt = self.pending_choice
+        for opt in evt.options:
+            if opt["id"] == choice_id:
+                opt["effect"](self.state)
+                flag = f"choice_{evt.id}_resolved"
+                self.state.event_flags[flag] = True
+                break
+        self.pending_choice = None
 
     def show_death_screen(self, fragments_earned, months_survived,
                           battles=0, npcs_recruited=None,

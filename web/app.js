@@ -1,4 +1,4 @@
-/* 三国文字Roguelike - Web UI Client */
+/* 三国文字Roguelike - Web UI Client (v3 with campaigns, choices, equipment) */
 const API = '/api';
 
 let currentState = null;
@@ -65,6 +65,18 @@ async function apiTavernChoice(choiceIdx) {
     return callAPI('POST', '/tavern_choice', { choice: String(choiceIdx) });
 }
 
+async function apiCampaignChoice(accept, side) {
+    return callAPI('POST', '/campaign_choice', { accept, side });
+}
+
+async function apiChoice(choiceId) {
+    return callAPI('POST', '/choice', { choice_id: String(choiceId) });
+}
+
+async function apiEquipment(action, slotIndex) {
+    return callAPI('POST', '/equipment', { action, slot_index: slotIndex });
+}
+
 // ── UI Functions ──────────────────────────────────────
 function showScreen(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -100,6 +112,7 @@ function updateStats(state) {
     const p = state.player;
     document.getElementById('disp-time').textContent = state.time;
     document.getElementById('disp-loc').textContent = p.location;
+
     // Show city favorability next to location
     const locEl = document.getElementById('disp-loc');
     const fav = (state.city_favorability && state.city_favorability[p.location]) || 50;
@@ -113,6 +126,7 @@ function updateStats(state) {
     }
     const fb = document.getElementById('fav-bar');
     if (fb) fb.innerHTML = favBar;
+
     document.getElementById('disp-rank').textContent = p.rank;
     document.getElementById('disp-name').textContent = p.name;
 
@@ -138,6 +152,7 @@ function applyState(state) {
     currentState = state;
     updateStats(state);
     renderActionPanel(state);
+    renderEquipmentPanel(state);
     if (state.narrative) addNarrative(state.narrative);
 }
 
@@ -147,6 +162,9 @@ function renderActionPanel(state) {
     if (!panel) return;
     panel.innerHTML = '';
 
+    // Show campaign/choice banners above the panel
+    renderTopBanners(state);
+
     const ui = state.ui_state;
     if (ui === 'combat') renderCombat(state, panel);
     else if (ui === 'npc') renderNpc(state, panel);
@@ -155,12 +173,179 @@ function renderActionPanel(state) {
     else renderNormal(state, panel);
 }
 
+function renderTopBanners(state) {
+    const banners = document.getElementById('top-banners');
+    if (banners) banners.innerHTML = '';
+    else return;
+
+    // Campaign pending banner
+    if (state.pending_campaign) {
+        renderCampaignPendingBanner(state, banners);
+    }
+    // Choice event banner
+    if (state.pending_choice && state.pending_choice.id) {
+        renderChoicePendingBanner(state, banners);
+    }
+    // Equipment drop banner
+    if (state.pending_equipment) {
+        renderEquipDropBanner(state, banners);
+    }
+    // Active campaign indicator
+    if (state.active_campaign) {
+        renderActiveCampaignBanner(state, banners);
+    }
+}
+
+function renderCampaignPendingBanner(state, container) {
+    const c = state.pending_campaign;
+    const div = document.createElement('div');
+    div.className = 'campaign-panel';
+    let rewardsHtml = '';
+    if (c.rewards && c.rewards.length) {
+        rewardsHtml = c.rewards.map(r =>
+            `<div>·「${r.name}」- ${r.desc}</div>`
+        ).join('');
+    }
+    const acceptBtn = `<button class="action-btn primary" onclick="doCampaignAccept()">⚔️ 参加战役</button>`;
+    const declineBtn = `<button class="action-btn danger" onclick="doCampaignDecline()">🚶 婉拒</button>`;
+    const sideSection = c.side_choice ? `
+        <div class="side-choice-panel">
+            <div style="font-size:12px;color:#9a7620;margin-bottom:4px;text-align:center">请选择阵营：</div>
+            <div class="action-row">
+                <button class="action-btn" onclick="doCampaignAccept('wu')">🤝 联吴抗曹</button>
+                <button class="action-btn" onclick="doCampaignAccept('wei')">⚔️ 联曹灭吴</button>
+            </div>
+        </div>` : '';
+
+    div.innerHTML = `
+        <div class="campaign-title">⚔️ 【${c.name}】</div>
+        <div class="campaign-desc">${c.description}</div>
+        <div class="campaign-info">
+            <span class="campaign-badge">⏱️ 持续${c.duration}月</span>
+            <span class="campaign-badge">⚠️ 粮草消耗翻倍</span>
+        </div>
+        ${c.rewards && c.rewards.length ? `
+        <div class="campaign-rewards">
+            <div class="campaign-rewards-title">🏆 战役奖励</div>
+            ${rewardsHtml}
+        </div>` : ''}
+        <div class="campaign-actions">${acceptBtn}${declineBtn}</div>
+        ${sideSection}
+    `;
+    container.appendChild(div);
+}
+
+function renderChoicePendingBanner(state, container) {
+    const c = state.pending_choice;
+    const div = document.createElement('div');
+    div.className = 'choice-panel';
+    const optionsHtml = (c.options || []).map(opt => `
+        <button class="choice-btn" onclick="doChoice('${opt.id}')">
+            <span class="choice-btn-label">${opt.label}</span>
+            <span class="choice-btn-desc">${opt.desc}</span>
+        </button>
+    `).join('');
+    div.innerHTML = `
+        <div class="choice-title">⚖️ 【${c.name}】</div>
+        <div class="choice-desc">${c.description}</div>
+        <div class="choice-options">${optionsHtml}</div>
+    `;
+    container.appendChild(div);
+}
+
+function renderEquipDropBanner(state, container) {
+    const eq = state.pending_equipment;
+    const div = document.createElement('div');
+    const tier = eq.tier || '普通';
+    const tierCls = {
+        '普通': 'tier-common',
+        '精良': 'tier-fine',
+        '史诗': 'tier-epic',
+        '传奇': 'tier-legendary',
+    }[tier] || 'tier-common';
+    div.className = `equip-drop-banner ${tierCls}`;
+    div.id = 'equip-drop-banner';
+    const tierIcon = {'普通':'⚪','精良':'🔵','史诗':'🟣','传奇':'🟠'}[tier] || '⚪';
+    const slots = state.player && state.player.equipment ? state.player.equipment : [];
+    const slotsHtml = slots.length < 3 ? '' :
+        `<div style="font-size:12px;color:#9a7620;margin-top:6px">⚠️ 装备槽已满，请选择一个装备替换：</div>
+        <div class="action-row" style="margin-top:4px">
+            ${slots.map((s, i) => `<button class="action-btn" onclick="doEquipReplace(${i})">${s.name}</button>`).join('')}
+            <button class="action-btn danger" onclick="doEquipDrop()">丢弃新装备</button>
+        </div>`;
+    div.innerHTML = `
+        <span class="equip-name">${tierIcon} 拾获装备「${eq.name}」</span>
+        <span class="equip-desc">${eq.desc}</span>
+        ${slots.length >= 3 ? slotsHtml : `
+        <div class="equip-actions">
+            <button class="action-btn primary" onclick="doEquipReplace(null)">自动装备</button>
+            <button class="action-btn danger" onclick="doEquipDrop()">丢弃</button>
+        </div>`}
+    `;
+    container.appendChild(div);
+}
+
+function renderActiveCampaignBanner(state, container) {
+    const ac = state.active_campaign;
+    if (!ac) return;
+    const div = document.createElement('div');
+    div.className = 'campaign-active-badge';
+    div.textContent = `⚔️ 战役进行中：${ac.name}`;
+    container.appendChild(div);
+}
+
+function renderEquipmentPanel(state) {
+    const panel = document.getElementById('equipment-panel');
+    if (!panel) return;
+    panel.innerHTML = '';
+
+    const equip = (state.player && state.player.equipment) ? state.player.equipment : [];
+    const slots = [];
+    for (let i = 0; i < 3; i++) {
+        slots.push(equip[i] || null);
+    }
+
+    const typeIcons = {
+        "weapon": "⚔️", "accessory": "💍", "banner": "🚩",
+        "mount": "🐎", "book": "📖", "armor": "🛡️"
+    };
+
+    let html = `<div class="equipment-panel">
+        <div class="equipment-title">⚙️ 装备（${equip.length}/3）</div>
+        <div class="equipment-slots">`;
+    const tierCls = {
+        '普通': 'equip-common',
+        '精良': 'equip-fine',
+        '史诗': 'equip-epic',
+        '传奇': 'equip-legendary',
+    };
+    slots.forEach((item, idx) => {
+        if (item) {
+            const icon = typeIcons[item.type] || '📦';
+            const statsStr = Object.entries(item.stats || {}).map(([k, v]) => `${k}+${v}`).join(' ');
+            const t = item.tier || '普通';
+            html += `<div class="eq-slot filled ${tierCls[t] || ''}" title="${item.name}\n${item.desc}\n${statsStr}" onclick="doUnequipSlot(${idx})">
+                <div class="eq-slot-icon">${icon}</div>
+                <div class="eq-slot-name">${item.name}</div>
+                <div class="eq-slot-stats">${statsStr}</div>
+            </div>`;
+        } else {
+            html += `<div class="eq-slot" title="空装备槽">
+                <div class="eq-slot-icon">➕</div>
+                <div class="eq-slot-name empty-label">空槽位</div>
+            </div>`;
+        }
+    });
+    html += `</div></div>`;
+    panel.innerHTML = html;
+}
+
 function renderCombat(state, panel) {
     const cd = state.combat_data;
     panel.innerHTML = `
         <div class="combat-enemy">
             <div class="enemy-name">⚔️ ${cd.enemy.name}</div>
-            <div class="enemy-stats">敌军：${cd.enemy.troops}人 | 士气：${cd.enemy.morale} | 地形：${cd.enemy.terrain}</div>
+            <div class="enemy-stats">敌军：${cd.enemy.troops}人 | 地形：${cd.enemy.terrain}</div>
             <div class="enemy-stats">我军：${cd.player_army}人 | 士气：${cd.player_morale}</div>
         </div>
         <div class="action-row">
@@ -223,8 +408,6 @@ function renderTavernChoice(state, panel) {
 }
 
 function renderNormal(state, panel) {
-    // ── Render normal (city arrival) state ─
-    // Show: adjacent city moves + market/intel shortcuts
     const moves = state.available_moves || [];
     let html = '<div class="action-row city-actions">';
     html += `<button class="action-btn market-btn" onclick="doMarketAuto()">🏪 市集<div class="btn-sub">买卖粮草</div></button>`;
@@ -328,14 +511,12 @@ async function doMarket(cmd) {
     applyState(state);
 }
 
-// Enter market UI
 async function doMarketAuto() {
     const state = await apiEnterMarket();
     if (!state || state.game_status === 'error') return;
     applyState(state);
 }
 
-// Intel without full state replacement (adds to narrative only)
 async function doIntelAuto() {
     const state = await apiIntel();
     if (!state || state.game_status === 'error') return;
@@ -359,7 +540,6 @@ async function doTavernChoice(npcId) {
 }
 
 async function doTavernCancel() {
-    // Resolve choice 0 (cancel) to exit tavern
     const state = await apiTavernChoice(0);
     if (!state || state.game_status === 'error') return;
     applyState(state);
@@ -379,6 +559,46 @@ async function doShowStatus() {
     applyState(state);
 }
 
+// ── Campaign handlers ─────────────────────────────────
+async function doCampaignAccept(side) {
+    const state = await apiCampaignChoice(true, side || null);
+    if (!state || state.game_status === 'error') return;
+    applyState(state);
+}
+
+async function doCampaignDecline() {
+    const state = await apiCampaignChoice(false, null);
+    if (!state || state.game_status === 'error') return;
+    applyState(state);
+}
+
+// ── Choice event handlers ─────────────────────────────
+async function doChoice(choiceId) {
+    const state = await apiChoice(choiceId);
+    if (!state || state.game_status === 'error') return;
+    applyState(state);
+}
+
+// ── Equipment handlers ────────────────────────────────
+async function doEquipReplace(slotIndex) {
+    const state = await apiEquipment('replace', slotIndex);
+    if (!state || state.game_status === 'error') return;
+    applyState(state);
+}
+
+async function doEquipDrop() {
+    const state = await apiEquipment('drop', null);
+    if (!state || state.game_status === 'error') return;
+    applyState(state);
+}
+
+async function doUnequipSlot(slotIndex) {
+    const state = await apiEquipment('drop', slotIndex);
+    if (!state || state.game_status === 'error') return;
+    applyState(state);
+}
+
+// ── Achievements ──────────────────────────────────────
 async function doShowAchievements() {
     const data = await callAPI('GET', '/achievements');
     renderAchievementsPanel(data);
@@ -408,12 +628,6 @@ function closeAchievements() {
     showScreen('game-screen');
 }
 
-async function doIntel() {
-    const state = await apiIntel();
-    if (!state || state.game_status === 'error') return;
-    applyState(state);
-}
-
 // ── Init ─────────────────────────────────────────────
 document.getElementById('btn-new-game').addEventListener('click', newGame);
 
@@ -425,5 +639,6 @@ apiGetState().then(state => {
         updateStats(state);
         if (state.narrative) addNarrative(state.narrative);
         renderActionPanel(state);
+        renderEquipmentPanel(state);
     }
 }).catch(() => {});

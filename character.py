@@ -46,6 +46,9 @@ class Character:
         # NPC好感度（玩家独有）
         self.relations = {}  # {npc_name: value (-100~100)}
 
+        # 装备槽位（最多3件）
+        self.equipment = []  # list of equipped item dicts
+
     def _random_name(self):
         surnames = ["张", "王", "刘", "陈", "赵", "孙", "周", "吴", "郑", "李"]
         given = ["羽", "飞", "超", "义", "勇", "忠", "德", "仁", "威", "杰"]
@@ -89,6 +92,11 @@ class Character:
             base += 15
 
         # brotherhood_oath: 好感度变化+50%（通过modify_relation处理，不在这里）
+
+        # 装备加成
+        if hasattr(self, 'equipment') and self.equipment:
+            eq_bonuses = self.get_equipment_bonuses()
+            base += eq_bonuses.get(stat, 0)
 
         return base
 
@@ -157,6 +165,26 @@ class Character:
     def get_relation(self, npc):
         return self.relations.get(npc, 0)
 
+    def add_equipment(self, item):
+        """Equip an item. Returns True if equipped, False if slots full."""
+        from equipment import EQUIPMENT_SLOTS
+        if len(self.equipment) >= EQUIPMENT_SLOTS:
+            return False
+        self.equipment.append(dict(item))
+        return True
+
+    def remove_equipment(self, slot_index):
+        """Remove equipment at slot index. Returns the removed item or None."""
+        if 0 <= slot_index < len(self.equipment):
+            return self.equipment.pop(slot_index)
+        return None
+
+    def get_equipment_bonuses(self):
+        """Return aggregate stat bonuses from all equipped items."""
+        from equipment import apply_equipment_stats
+        return apply_equipment_stats(self)
+
+
     def to_dict(self):
         return {
             "name": self.name,
@@ -175,6 +203,7 @@ class Character:
             "food": self.food,
             "stamina": self.stamina,
             "morale": self.morale,
+            "equipment": list(self.equipment),
         }
 
     @classmethod
@@ -195,6 +224,7 @@ class Character:
         c.food = data.get("food", config.INITIAL_FOOD)
         c.stamina = data.get("stamina", config.STAMINA_MAX)
         c.morale = data.get("morale", config.MORALE_MAX)
+        c.equipment = list(data.get("equipment", []))
         return c
 
     def __repr__(self):

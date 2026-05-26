@@ -234,6 +234,7 @@ class SanguoAPI:
                 "active_skills": list(p.active_skills),
                 "passive_skills": list(p.passive_skills),
                 "inheritance_fragments": p.inheritance_fragments,
+                "equipment": list(p.equipment),
             },
             "narrative": "\n".join(self._history[-50:]),  # last 50 entries
             "ui_state": ui_state,
@@ -248,10 +249,44 @@ class SanguoAPI:
             "tavern_npcs": getattr(self, '_tavern_npcs', None),
             "achievements": self._get_achievements_data(),
             "city_favorability": self.engine.state.city_favorability,
+            "pending_equipment": self._get_pending_equipment(),
         }
-        if ui_state == "tavern_choice" and hasattr(self, '_tavern_npcs'):
-            state["tavern_npcs"] = [{"id": str(i+1), "name": n.name, "rank": n.rank} for i, n in enumerate(self._tavern_npcs)]
-        return state
+
+    def _get_pending_campaign(self):
+        """Return pending campaign data if any."""
+        if not self.engine.pending_campaign:
+            return None
+        c = self.engine.pending_campaign
+        return {
+            "id": c.id,
+            "name": c.name,
+            "description": c.description,
+            "duration": c.duration,
+            "rewards": c.rewards,
+            "side_choice": c.side_choice,
+            "combat_intro": c.combat_intro,
+        }
+
+    def _get_pending_choice(self):
+        """Return pending choice event data if any."""
+        if not self.engine.pending_choice:
+            return None
+        e = self.engine.pending_choice
+        return {
+            "id": e.id,
+            "name": e.name,
+            "description": e.description,
+            "options": [
+                {"id": opt["id"], "label": opt["label"], "desc": opt["desc"]}
+                for opt in e.options
+            ],
+        }
+
+    def _get_pending_equipment(self):
+        """Return pending equipment drop data if any."""
+        if not self.engine.pending_equipment:
+            return None
+        return dict(self.engine.pending_equipment)
 
     def _get_achievements_data(self):
         """Return achievements data for the UI panel."""
@@ -540,6 +575,34 @@ def tavern_choice():
 def api_achievements():
     """Return full achievements data for the UI panel."""
     return jsonify(api._get_achievements_data())
+
+@app.route("/api/campaign_choice", methods=["POST"])
+def campaign_choice():
+    data = request.json or {}
+    accept = data.get("accept", False)
+    side = data.get("side")  # optional, for side-choice campaigns
+    api.engine.handle_campaign_choice(bool(accept), side)
+    return jsonify(api.get_state())
+
+@app.route("/api/choice", methods=["POST"])
+def choice():
+    data = request.json or {}
+    choice_id = data.get("choice_id", "")
+    api.engine.handle_choice_event(str(choice_id))
+    return jsonify(api.get_state())
+
+@app.route("/api/equipment", methods=["POST"])
+def equipment():
+    data = request.json or {}
+    action = data.get("action", "")  # "replace" | "drop"
+    slot_index = data.get("slot_index")  # 0, 1, 2 or None
+    if action == "replace" and slot_index is not None:
+        api.engine.handle_equipment_choice(int(slot_index))
+    elif action == "drop":
+        # Drop currently equipped item at slot
+        if slot_index is not None:
+            api.engine.state.player.remove_equipment(int(slot_index))
+    return jsonify(api.get_state())
 
 if __name__ == "__main__":
     import os
