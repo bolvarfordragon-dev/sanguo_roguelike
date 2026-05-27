@@ -58,7 +58,7 @@ NPC_SCHEDULE = {
         "home_base": "涿郡",
         "timeline": [
             {"years": [161, 183], "location": "涿郡", "event": "早年生平，织席贩履"},
-            {"years": [184, 186], "location": "颍川", "event": "黄巾之乱后四处征战"},
+            {"years": [184, 186], "location": "涿郡", "event": "黄巾之乱后四处征战"},
             {"years": [186, 189], "location": "涿郡", "event": "因功封安喜尉"},
             {"years": [189, 193], "location": "洛阳", "event": "讨伐董卓，参与酸枣会盟"},
             {"years": [193, 199], "location": "北海", "event": "依附公孙瓒，驻守平原"},
@@ -235,7 +235,200 @@ NPC_SCHEDULE = {
         ],
         "is_faction_leader": False,
     },
-}
+    "江湖游侠": {
+        "active_years": [175, 195],
+        "home_base": "颍川",
+        "timeline": [
+            {"years": [175, 184], "location": "颍川", "event": "游侠江湖"},
+            {"years": [184, 190], "location": "颍川", "event": "与刘备结交"},
+            {"years": [190, 195], "location": "洛阳", "event": "讨董战场"},
+        ],
+        "is_faction_leader": False,
+    },
+        "太史慈": {
+        "active_years": [195, 206],
+        "home_base": "东莱",
+        "timeline": [
+            {"years": [195, 200], "location": "扬州", "event": "追随刘繇"},
+            {"years": [200, 208], "location": "江夏", "event": "孙策部下"},
+            {"years": [208, 215], "location": "吴郡", "event": "孙权部下"},
+            {"years": [215, 206], "location": "南郡", "event": "征战荆州"},
+        ],
+        "is_faction_leader": False,
+    },
+    "甘宁": {
+        "active_years": [195, 222],
+        "home_base": "江夏",
+        "timeline": [
+            {"years": [195, 208], "location": "江夏", "event": "依附刘表"},
+            {"years": [208, 215], "location": "江夏", "event": "归孙权"},
+            {"years": [215, 222], "location": "江陵", "event": "征战荆益"},
+        ],
+        "is_faction_leader": False,
+    },
+    "魏延": {
+        "active_years": [208, 234],
+        "home_base": "义阳",
+        "timeline": [
+            {"years": [208, 211], "location": "荆州", "event": "入蜀"},
+            {"years": [211, 219], "location": "成都", "event": "刘备部下"},
+            {"years": [219, 234], "location": "汉中", "event": "诸葛亮北伐"},
+        ],
+        "is_faction_leader": False,
+    },
+    "张辽": {
+        "active_years": [189, 222],
+        "home_base": "雁门",
+        "timeline": [
+            {"years": [189, 198], "location": "洛阳", "event": "丁原/董卓/吕布部下"},
+            {"years": [198, 207], "location": "徐州", "event": "吕布部下"},
+            {"years": [207, 222], "location": "许昌", "event": "曹操部下"},
+        ],
+        "is_faction_leader": False,
+    },
+    "徐晃": {
+        "active_years": [197, 227],
+        "home_base": "杨县",
+        "timeline": [
+            {"years": [197, 204], "location": "洛阳", "event": "杨奉部下"},
+            {"years": [204, 227], "location": "许昌", "event": "曹操部下"},
+        ],
+        "is_faction_leader": False,
+    },
+    "张郃": {
+        "active_years": [200, 231],
+        "home_base": "河间",
+        "timeline": [
+            {"years": [200, 207], "location": "邺城", "event": "袁绍部下"},
+            {"years": [207, 231], "location": "许昌", "event": "曹操下部"},
+        ],
+        "is_faction_leader": False,
+    },
+    "黄忠": {
+        "active_years": [208, 220],
+        "home_base": "南阳",
+        "timeline": [
+            {"years": [208, 211], "location": "长沙", "event": "刘表下部"},
+            {"years": [211, 214], "location": "成都", "event": "入蜀"},
+            {"years": [214, 220], "location": "成都", "event": "刘备下部"},
+        ],
+        "is_faction_leader": False,
+    },
+    "马超": {
+        "active_years": [196, 222],
+        "home_base": "扶风",
+        "timeline": [
+            {"years": [196, 211], "location": "西凉", "event": "马腾下部"},
+            {"years": [211, 214], "location": "汉中", "event": "张鲁下部"},
+            {"years": [214, 222], "location": "成都", "event": "刘备下部"},
+        ],
+        "is_faction_leader": False,
+    },
+    "庞德": {
+        "active_years": [195, 219],
+        "home_base": "南安",
+        "timeline": [
+            {"years": [195, 209], "location": "长安", "event": "马腾下部"},
+            {"years": [209, 219], "location": "樊城", "event": "曹操下部"},
+        ],
+        "is_faction_leader": False,
+    },
+    "鲁肃": {
+        "active_years": [200, 217],
+        "home_base": "临淮",
+        "timeline": [
+            {"years": [200, 208], "location": "吴郡", "event": "周瑜友人"},
+            {"years": [208, 217], "location": "吴郡", "event": "孙权谋士"},
+        ],
+        "is_faction_leader": False,
+    },
+    "陆逊": {
+        "active_years": [204, 245],
+        "home_base": "吴郡",
+        "timeline": [
+            {"years": [204, 219], "location": "吴郡", "event": "孙权下部"},
+            {"years": [219, 222], "location": "江陵", "event": "荆州太守"},
+            {"years": [222, 245], "location": "吴郡", "event": "丞粵"},
+        ],
+        "is_faction_leader": False,
+    },
+    "司马懿": {
+        "active_years": [208, 251],
+        "home_base": "河内",
+        "timeline": [
+            {"years": [208, 220], "location": "许昌", "event": "曹操司空府"},
+            {"years": [220, 239], "location": "洛阳", "event": "曹丕/曹叡信任"},
+            {"years": [239, 251], "location": "洛阳", "event": "权倾朝野"},
+        ],
+        "is_faction_leader": False,
+    },
+    "荀彧": {
+        "active_years": [189, 212],
+        "home_base": "颍川",
+        "timeline": [
+            {"years": [189, 196], "location": "兖州", "event": "曹操典农校尉"},
+            {"years": [196, 212], "location": "许昌", "event": "曹操谋士"},
+        ],
+        "is_faction_leader": False,
+    },
+    "郭嘉": {
+        "active_years": [196, 207],
+        "home_base": "颍川",
+        "timeline": [
+            {"years": [196, 207], "location": "许昌", "event": "曹操军师祭酒"},
+        ],
+        "is_faction_leader": False,
+    },
+    "贾诩": {
+        "active_years": [192, 220],
+        "home_base": "武威",
+        "timeline": [
+            {"years": [192, 197], "location": "长安", "event": "李傕下部"},
+            {"years": [197, 208], "location": "荆州", "event": "刘表客卿"},
+            {"years": [208, 220], "location": "许昌", "event": "曹操下部"},
+        ],
+        "is_faction_leader": False,
+    },
+    "陈宫": {
+        "active_years": [189, 199],
+        "home_base": "东武",
+        "timeline": [
+            {"years": [189, 192], "location": "兖州", "event": "曹操下部"},
+            {"years": [192, 198], "location": "濮阳", "event": "吕布下部"},
+            {"years": [198, 199], "location": "下邳", "event": "吕布谋士"},
+        ],
+        "is_faction_leader": False,
+    },
+    "徐庶": {
+        "active_years": [200, 230],
+        "home_base": "颍川",
+        "timeline": [
+            {"years": [200, 208], "location": "新野", "event": "刘备下部"},
+            {"years": [208, 230], "location": "许昌", "event": "曹操下部"},
+        ],
+        "is_faction_leader": False,
+    },
+    "庞统": {
+        "active_years": [209, 214],
+        "home_base": "襄阳",
+        "timeline": [
+            {"years": [209, 211], "location": "南郡", "event": "周瑜下部"},
+            {"years": [211, 214], "location": "雒县", "event": "刘备下部，阵亡"},
+        ],
+        "is_faction_leader": False,
+    },
+    "法正": {
+        "active_years": [207, 220],
+        "home_base": "扶风",
+        "timeline": [
+            {"years": [207, 211], "location": "成都", "event": "刘璋下部"},
+            {"years": [211, 214], "location": "成都", "event": "归刘备"},
+            {"years": [214, 220], "location": "成都", "event": "刘备谋主"},
+        ],
+        "is_faction_leader": False,
+    },
+
+    }
 
 
 def get_npc_location(npc_name, year):

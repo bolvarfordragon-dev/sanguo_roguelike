@@ -30,6 +30,12 @@ class GameState:
             "events_triggered_this_run": 0,
             "highest_rank": "散兵",
             "total_exp_earned": 0,
+            # 行为业力追踪（用于转世加成）
+            "karma_wins": 0,        # 战斗胜利场数
+            "karma_npc_recruited": 0,  # 本局招募NPC数
+            "karma_history_events": 0,  # 本局触发历史事件数
+            "karma_speech_wins": 0,     # 本局舌战胜数
+            "karma_rare_encounters": 0, # 本局稀有奇遇数
         }
         # 城市好感度 {city_name: 0-100, neutral=50}
         self.city_favorability = {}

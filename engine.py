@@ -206,8 +206,42 @@ class SanguoEngine:
         enemy = self.pending_combat["enemy"]
         ctx = self.pending_combat["ctx"]
 
+        # NPC战斗光环
+        wu_bonus = 0
+        zhi_bonus = 0
+        ming_bonus = 0
+        recruited_types = set()
+        for name, flag in self.state.event_flags.items():
+            if flag and name.startswith("NPC类型_"):
+                recruited_types.add(flag)
+        if "君主" in recruited_types:
+            wu_bonus += 5
+            zhi_bonus += 3
+        if "武将" in recruited_types:
+            wu_bonus += 5
+        if "文官" in recruited_types:
+            zhi_bonus += 3
+        if recruited_types:
+            ming_bonus = 2
+
+        # NPC战斗光环加成（临时应用）
+        if wu_bonus > 0:
+            self.state.player.stats["武"] += wu_bonus
+        if zhi_bonus > 0:
+            self.state.player.stats["智"] += zhi_bonus
+        if ming_bonus > 0:
+            self.state.player.stats["名"] += ming_bonus
+
         session = start_combat(self.state.player, enemy, ctx)
         session.simulate(player_action=action, active_skill=active_skill)
+
+        # 移除临时光环加成
+        if wu_bonus > 0:
+            self.state.player.stats["武"] -= wu_bonus
+        if zhi_bonus > 0:
+            self.state.player.stats["智"] -= zhi_bonus
+        if ming_bonus > 0:
+            self.state.player.stats["名"] -= ming_bonus
 
         # 更新玩家状态
         costs = session.get_cost(action)
@@ -271,6 +305,15 @@ class SanguoEngine:
             # 战斗中胜利 +3 城市好感度
             self._modify_city_favorability(self.state.player.location, config.CITY_FAVORABILITY["battle_win_gain"])
             self.state.run_stats["wins"] = self.state.run_stats.get("wins", 0) + 1
+            self.state.run_stats["karma_wins"] = self.state.run_stats.get("karma_wins", 0) + 1
+            # 战斗质量bonus：打赢比自己强 → 武业力额外奖励
+            player_wu = self.state.player.get_stat("武")
+            enemy_wu = enemy.get_stat("武")
+            diff = enemy_wu - player_wu
+            if diff > 0:
+                # upset bonus: 额外+0.1~0.5（差值越大bonus越多）
+                bonus = min(0.5, int(diff / 40) * 0.1)
+                self.state.run_stats["karma_wins"] += bonus
             self.state.run_stats["win_streak"] = self.state.run_stats.get("win_streak", 0) + 1
             self.state.run_stats["lose_streak"] = 0
         else:
@@ -573,6 +616,8 @@ class SanguoEngine:
 
         # 检查必然事件
         mandatory_result = trigger_mandatory_event(self.state, year, month)
+        if mandatory_result:
+            self.state.run_stats["karma_history_events"] = self.state.run_stats.get("karma_history_events", 0) + 1
 
         # 检查条件事件
         conditional_results = []
@@ -580,12 +625,14 @@ class SanguoEngine:
             r = evt.check_and_trigger(self.state)
             if r:
                 conditional_results.append(r)
+                self.state.run_stats["karma_history_events"] = self.state.run_stats.get("karma_history_events", 0) + 1
 
         # 检查特殊事件
         for evt in [taoyuan_oath_event(), huarong_road_event(), three_visits_to_zhuge_event()]:
             r = evt.check_and_trigger(self.state)
             if r:
                 conditional_results.append(r)
+                self.state.run_stats["karma_history_events"] = self.state.run_stats.get("karma_history_events", 0) + 1
 
         # 自然恢复
         self._natural_recovery()
@@ -598,6 +645,13 @@ class SanguoEngine:
         try:
             from random_events import trigger_random_events
             random_results = trigger_random_events(self.state)
+            # 统计舌战胜和稀有奇遇
+            for r in random_results:
+                if r.get("name") == "舌战" and r.get("type") == "positive":
+                    # 舌战胜：智+0.5业力（需统计胜败）
+                    self.state.run_stats["karma_speech_wins"] = self.state.run_stats.get("karma_speech_wins", 0) + 1
+                if r.get("name") in ("山洞奇遇", "秘笈传承", "老兵传授", "商队赠礼", "名师指点"):
+                    self.state.run_stats["karma_rare_encounters"] = self.state.run_stats.get("karma_rare_encounters", 0) + 1
         except Exception:
             pass
 
@@ -736,8 +790,8 @@ class SanguoEngine:
         if not candidates:
             return None
 
-        # 基础20%概率遇上有候选的NPC
-        if random.random() > 0.20:
+        # 基础25%概率遇上有候选的NPC
+        if random.random() > 0.25:
             return None
 
         # 随机选择一个 NPC 遭遇
@@ -761,7 +815,7 @@ class SanguoEngine:
 
         # 基础28%概率，随名望提升略微降低（名望越高，匪寇越少主动招惹）
         fame_mod = max(-0.05, -(p.get_stat("名") - 10) / 1000)
-        base_chance = 0.25 + fame_mod
+        base_chance = 0.32 + fame_mod
 
         # 已有战斗待处理
         if self.pending_combat:
@@ -906,6 +960,21 @@ class SanguoEngine:
             if "饥饿" in p.effects:
                 p.effects.remove("饥饿")
 
+    def _get_equipment_karma_cap_bonus(self, stat):
+        """获取装备提供的业力上限加成（额外+20每件传奇装备）"""
+        if not self.state or not self.state.player:
+            return 0
+        bonus = 0
+        for eq in self.state.player.equipment:
+            if eq.get("tier") == "传奇":
+                tier_bonus = eq.get("stat_bonus", {})
+                # 传奇装备对武额外+20，其他属性+10
+                if stat == "武":
+                    bonus += 20
+                else:
+                    bonus += 10
+        return bonus
+
     def _tick_city_favorability(self):
         """每月城市好感度变化：玩家所在城市+1，其他城市不变"""
         cf = self.state.city_favorability
@@ -1011,10 +1080,14 @@ class SanguoEngine:
         elif choice == "5":  # 交谈
             info = self._get_npc_intel(npc)
             print(info)
+            # 交谈行为业力：魅+0.2
+            self.state.run_stats["karma_conversation"] = self.state.run_stats.get("karma_conversation", 0) + 0.2
 
         elif choice == "6":  # 索取情报
             intel = self._get_npc_intel(npc, detailed=True)
             print(intel)
+            # 索取情报行为业力：智+0.3（获得知识）
+            self.state.run_stats["karma_intel"] = self.state.run_stats.get("karma_intel", 0) + 0.3
 
         else:
             print("无效选择，请输入 1-7。")
@@ -1042,17 +1115,17 @@ class SanguoEngine:
         top_tier = {"刘备", "曹操"}
         mid_tier = {"关羽", "张飞", "赵云", "吕布", "诸葛亮", "周瑜", "司马懿"}
         if npc.name in top_tier:
-            base_rate = 0.20
+            base_rate = 0.30
         elif npc.name in mid_tier:
-            base_rate = 0.35
+            base_rate = 0.45
         else:
-            base_rate = 0.50
+            base_rate = 0.60
 
         # ========== 玩家官职修正（0~9级官职 -> 0% ~ +27%）==========
         rank_mod = rank_idx * 0.03
 
         # ========== 玩家魅力修正（50基准，100满魅力 +15%）==========
-        charisma_mod = max(-0.20, (p.get_stat("魅") - 50) / 50 * 0.15)
+        charisma_mod = max(-0.15, (p.get_stat("魅") - 30) / 60 * 0.15)
 
         # ========== NPC 属性门槛（按类型：文官-智魅，武将-武魅，魅力型-只魅）==========
         stat_map = {
@@ -1079,6 +1152,21 @@ class SanguoEngine:
         }
         strategy_mod = strategy_mods.get(strategy, 0.0)
 
+        # 招募成功后的行为业力bonus（对话方式决定额外加成）
+        strategy_bonus = {
+            "sincere": {"魅": 0.3},
+            "bribe": {"魅": 0.5},
+            "righteous": {"名": 0.5, "智": 0.3},
+            "coerce": {"魅": 1.0},
+        }
+
+        # NPC类型bonus
+        npc_type_bonus = {
+            "武将": {"武": 0.3},
+            "文官": {"智": 0.5},
+            "君主": {"名": 1.0, "魅": 0.5},
+        }
+
         # ========== 消耗处理 ==========
         cost = 30 if strategy == "bribe" else (20 if strategy == "coerce" else 0)
         if cost > 0:
@@ -1092,10 +1180,24 @@ class SanguoEngine:
 
         if success:
             self.state.event_flags[f"已招募_{npc.name}"] = True
+            self.state.event_flags[f"NPC类型_{npc.name}"] = npc.npc_type
             p.modify_relation(npc.name, 20)
-            # 记录本局招募
+
+            # 记录招募 + 行为业力奖励
             if npc.name not in self.state.run_stats.get("npcs_recruited_this_run", []):
                 self.state.run_stats.setdefault("npcs_recruited_this_run", []).append(npc.name)
+                base_bonus = 1.0
+
+                # NPC类型额外奖励
+                if npc.npc_type in npc_type_bonus:
+                    for stat, val in npc_type_bonus[npc.npc_type].items():
+                        self.state.run_stats[f"karma_npc_recruited"] = self.state.run_stats.get("karma_npc_recruited", 0) + val
+
+                # 策略难度额外奖励
+                if strategy in strategy_bonus:
+                    for stat, val in strategy_bonus[strategy].items():
+                        self.state.run_stats[f"karma_npc_recruited"] = self.state.run_stats.get("karma_npc_recruited", 0) + val
+
             # 在该城市招募 +5 好感度
             self._modify_city_favorability(self.state.player.location, config.CITY_FAVORABILITY["recruit_gain"])
             # 主线预告：首次加入曹操或孙权阵营
@@ -1332,17 +1434,43 @@ class SanguoEngine:
 
         carry_rates = config.REINCARNATION_CARRY_RATES
         caps = config.REINCARNATION_CAPS
+        rs = self.state.run_stats
         karma_gain_display = []
         karma_gain_values = {}
+
+        # 行为业力贡献（主要来源）
+        # 行为业力贡献（主要来源）
+        # 武: 战斗胜利基础0.3/场 + upset bonus(差值/40*0.1)，结果取整
+        # 其他: 直接取整
+        behavior_karma = {
+            "武": round(rs.get("karma_wins", 0) * 0.3, 1),
+            "魅": round(rs.get("karma_npc_recruited", 0) + rs.get("karma_conversation", 0) * 0.2, 1),
+            "名": int(rs.get("karma_history_events", 0) * 0.5),
+            "智": int(rs.get("karma_speech_wins", 0) * 0.5 + rs.get("karma_intel", 0) * 0.3),
+            "运": int(rs.get("karma_rare_encounters", 0) * 0.5),
+        }
+
+        # 死亡属性微调（5%，作为行为贡献的补充）
+        death_karma = {
+            stat: int(p.stats.get(stat, 0) * 0.05)
+            for stat in ["武", "智", "名", "魅", "运"]
+        }
+
         for stat in ["武", "智", "名", "魅", "运"]:
-            died_value = p.stats.get(stat, 0)
-            carry = int(died_value * carry_rates.get(stat, 0))
+            carry = int(behavior_karma.get(stat, 0) + death_karma.get(stat, 0))
             if carry > 0:
                 cap = caps.get(stat, 20)
                 before = player_karma.get(stat, 0)
-                player_karma[stat] = min(cap, before + carry)
+                eq_bonus = self._get_equipment_karma_cap_bonus(stat)
+                total_cap = cap + eq_bonus
+                player_karma[stat] = min(total_cap, before + carry)
                 karma_gain_values[stat] = carry
-                karma_gain_display.append(f"{stat}+{carry}")
+                parts = []
+                if behavior_karma.get(stat, 0) > 0:
+                    parts.append(f"行{behavior_karma[stat]}")
+                if death_karma.get(stat, 0) > 0:
+                    parts.append(f"死{death_karma[stat]}")
+                karma_gain_display.append(f"{stat}+{' + '.join(parts)}")
 
         self._save_reincarnation(karma_data)
 
