@@ -63,8 +63,8 @@ NPC_SCHEDULE = {
             {"years": [189, 193], "location": "洛阳", "event": "讨伐董卓，参与酸枣会盟"},
             {"years": [193, 199], "location": "北海", "event": "依附公孙瓒，驻守平原"},
             {"years": [199, 201], "location": "汝南", "event": "依附袁绍，官渡前夕"},
-            {"years": [201, 208], "location": "荆州", "event": "依附刘表，三顾茅庐（207年）"},
-            {"years": [209, 211], "location": "江陵", "event": "赤壁之战，借南郡"},
+            {"years": [201, 207], "location": "荆州", "event": "依附刘表，三顾茅庐"},
+            {"years": [208, 210], "location": "江陵", "event": "赤壁之战，借南郡"},
             {"years": [211, 214], "location": "成都", "event": "入蜀，接管益州"},
             {"years": [214, 219], "location": "成都", "event": "汉中之战，自立汉中王"},
             {"years": [219, 221], "location": "成都", "event": "称帝，建立蜀汉"},
@@ -80,7 +80,7 @@ NPC_SCHEDULE = {
         "timeline": [
             {"years": [162, 191], "location": "涿郡", "event": "早年生平"},
             {"years": [191, 201], "location": "邺城", "event": "依附袁绍，后离去"},
-            {"years": [201, 208], "location": "荆州", "event": "依附刘备"},
+            {"years": [201, 207], "location": "荆州", "event": "依附刘备"},
             {"years": [208, 211], "location": "江陵", "event": "赤壁之战，长坂坡护主"},
             {"years": [211, 214], "location": "成都", "event": "随刘备入蜀"},
             {"years": [214, 229], "location": "江陵", "event": "镇守荆州，随诸葛亮北伐，病逝"},
@@ -97,7 +97,7 @@ NPC_SCHEDULE = {
             {"years": [211, 214], "location": "成都", "event": "随刘备入蜀"},
             {"years": [214, 221], "location": "江陵", "event": "镇守荆州，处理内政"},
             {"years": [221, 223], "location": "成都", "event": "刘备托孤，辅佐刘禅"},
-            {"years": [223, 228], "location": "成都", "event": "休养生息，整顿内政"},
+            {"years": [223, 227], "location": "成都", "event": "休养生息，整顿内政"},
             {"years": [228, 229], "location": "汉中", "event": "第一次北伐"},
             {"years": [229, 230], "location": "汉中", "event": "第二、三次北伐"},
             {"years": [230, 231], "location": "汉中", "event": "第四次北伐"},
@@ -119,8 +119,8 @@ NPC_SCHEDULE = {
             {"years": [192, 196], "location": "濮阳", "event": "收编黄巾，兖州牧"},
             {"years": [196, 200], "location": "许昌", "event": "迎献帝，挟天子以令诸侯"},
             {"years": [200, 207], "location": "许昌", "event": "官渡之战，大破袁绍"},
-            {"years": [208, 211], "location": "江陵", "event": "赤壁之战，大败于周瑜"},
-            {"years": [211, 215], "location": "许昌", "event": "平定马超，统一北方"},
+            {"years": [208, 210], "location": "江陵", "event": "赤壁之战，大败于周瑜"},
+            {"years": [210, 215], "location": "许昌", "event": "平定马超，统一北方"},
             {"years": [215, 219], "location": "许昌", "event": "汉中之战，进爵魏王"},
             {"years": [219, 220], "location": "许昌", "event": "进封魏王，病逝"},
         ],
@@ -235,14 +235,6 @@ NPC_SCHEDULE = {
         ],
         "is_faction_leader": False,
     },
-    "江湖游侠": {
-        "active_years": [160, 200],
-        "home_base": "颍川",
-        "timeline": [
-            {"years": [160, 200], "location": "颍川", "event": "江湖四处游历"},
-        ],
-        "is_faction_leader": False,
-    }
 }
 
 
