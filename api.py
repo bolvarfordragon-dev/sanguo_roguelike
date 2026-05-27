@@ -254,6 +254,7 @@ class SanguoAPI:
             "tavern_npcs": getattr(self, '_tavern_npcs', None),
             "achievements": self._get_achievements_data(),
             "city_favorability": self.engine.state.city_favorability,
+            "run_stats": dict(self.engine.state.run_stats),
             "pending_equipment": self._get_pending_equipment(),
         }
 

@@ -151,12 +151,44 @@ function updateStats(state) {
 function applyState(state) {
     currentState = state;
     updateStats(state);
+    renderRunStats(state);
     renderActionPanel(state);
     renderEquipmentPanel(state);
     if (state.narrative) addNarrative(state.narrative);
 }
 
-// ── Render action panel by ui_state ──────────────────
+// ── Run stats bar ─────────────────────────────────
+function renderRunStats(state) {
+    const el = document.getElementById('run-stats-row');
+    if (!el) return;
+    const rs = state.run_stats;
+    if (!rs) { el.style.display = 'none'; return; }
+
+    const total = (rs.wins || 0) + (rs.losses || 0);
+    const winRate = total > 0 ? Math.round((rs.wins || 0) / total * 100) : 0;
+    const streak = (rs.win_streak || 0) > 0
+        ? `连胜${rs.win_streak}`
+        : (rs.lose_streak || 0) > 0 ? `连败${rs.lose_streak}` : '';
+
+    const months = state.player && state.player._engine_ref
+        ? (function() {
+            const y = state.year || 184;
+            const m = state.month || 1;
+            return (y - 184) * 12 + m;
+        })()
+        : 0;
+
+    el.style.display = 'flex';
+    el.innerHTML = `
+        <span>⚔️ 战斗${total}场</span>
+        <span style="color:${winRate>=50?'#2ecc71':'#e74c3c'}">胜率${winRate}%</span>
+        ${streak ? `<span style="color:#f39c12">${streak}</span>` : ''}
+        <span>🎭 招募${(rs.npcs_recruited_this_run||[]).length}人</span>
+        <span>📅 第${months}月</span>
+    `;
+}
+
+
 function renderActionPanel(state) {
     const panel = document.getElementById('action-panel');
     if (!panel) return;

@@ -22,6 +22,10 @@ class GameState:
         # 本局统计（每局重置）
         self.run_stats = {
             "battles_this_run": 0,
+            "wins": 0,
+            "losses": 0,
+            "win_streak": 0,
+            "lose_streak": 0,
             "npcs_recruited_this_run": [],
             "events_triggered_this_run": 0,
             "highest_rank": "散兵",

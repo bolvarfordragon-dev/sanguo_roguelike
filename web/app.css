@@ -75,6 +75,10 @@ body {
 .morale-bar { background: var(--gold); }
 .stamina-bar { background: var(--green); }
 .stat-val { min-width: 24px; text-align: right; }
+.run-stats-row {
+    display: flex; gap: 12px; flex-wrap: wrap;
+}
+.run-stats-row span { white-space: nowrap; }
 
 /* Main stats */
 .main-stats {

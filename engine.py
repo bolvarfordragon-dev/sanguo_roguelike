@@ -270,8 +270,14 @@ class SanguoEngine:
             narrative = session.get_full_narrative() + loot_line
             # 战斗中胜利 +3 城市好感度
             self._modify_city_favorability(self.state.player.location, config.CITY_FAVORABILITY["battle_win_gain"])
+            self.state.run_stats["wins"] = self.state.run_stats.get("wins", 0) + 1
+            self.state.run_stats["win_streak"] = self.state.run_stats.get("win_streak", 0) + 1
+            self.state.run_stats["lose_streak"] = 0
         else:
             # 战败
+            self.state.run_stats["losses"] = self.state.run_stats.get("losses", 0) + 1
+            self.state.run_stats["lose_streak"] = self.state.run_stats.get("lose_streak", 0) + 1
+            self.state.run_stats["win_streak"] = 0
             self.state.player.food = max(0, self.state.player.food - session.attacker_damage)
             # 战斗中失败 -5 城市好感度
             self._modify_city_favorability(self.state.player.location, -config.CITY_FAVORABILITY["battle_loss_penalty"])
