@@ -255,6 +255,7 @@ class SanguoAPI:
             "achievements": self._get_achievements_data(),
             "city_favorability": self.engine.state.city_favorability,
             "run_stats": dict(self.engine.state.run_stats),
+            "run_history": self._get_history_data(),
             "pending_equipment": self._get_pending_equipment(),
         }
 
@@ -310,6 +311,16 @@ class SanguoAPI:
                 }
                 for ach in ACHIEVEMENTS
             ],
+        }
+
+    def _get_history_data(self):
+        """Return run history for the history panel."""
+        history = self.progression.history
+        # Return last 20 records, most recent first
+        records = list(reversed(history))[-20:]
+        return {
+            "records": records,
+            "total_runs": len(history),
         }
 
     def _get_map_data(self):

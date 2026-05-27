@@ -1608,9 +1608,19 @@ def main():
                         engine.show_final_score()
                         engine.new_game()
                     else:
-                        # 死亡：传递本局统计
+                        # 死亡：记录历史并显示死亡界面
                         fragments = 5 + ((months + 5) // 6)
                         rs = engine.state.run_stats
+                        # 写入史籍
+                        engine.progression.record_death(
+                            player=engine.state.player,
+                            cause="陨落",
+                            context={
+                                "year": engine.state.year,
+                                "month": engine.state.month,
+                                "kills": rs.get("battles_this_run", 0),
+                            }
+                        )
                         engine.show_death_screen(
                             fragments_earned=fragments,
                             months_survived=months,

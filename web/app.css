@@ -79,6 +79,18 @@ body {
     display: flex; gap: 12px; flex-wrap: wrap;
 }
 .run-stats-row span { white-space: nowrap; }
+/* History panel */
+.history-list { display: flex; flex-direction: column; gap: 8px; }
+.history-item {
+    background: #16213e; border-radius: 10px; padding: 10px 14px;
+    border-left: 3px solid #3498db;
+}
+.history-item.death { border-left-color: #e74c3c; }
+.history-year { font-size: 11px; color: #888; }
+.history-rank { font-size: 13px; color: #f39c12; font-weight: 700; }
+.history-name { font-size: 15px; color: #fff; margin: 2px 0; }
+.history-cause { font-size: 12px; color: #e74c3c; }
+.history-exp { font-size: 11px; color: #666; }
 
 /* Main stats */
 .main-stats {

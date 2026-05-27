@@ -446,6 +446,7 @@ function renderNormal(state, panel) {
     html += `<button class="action-btn tavern-btn" onclick="doVisitTavern()">🍶 酒馆<div class="btn-sub">拜访/打听</div></button>`;
     html += `<button class="action-btn intel-btn" onclick="doIntelAuto()">📰 情报<div class="btn-sub">20金打听NPC</div></button>`;
     html += `<button class="action-btn map-btn" onclick="doShowMap()">🗺️ 地图<div class="btn-sub">查看地图</div></button>`;
+    html += `<button class="action-btn history-btn" onclick="doShowHistory()">📜 战报<div class="btn-sub">历史记录</div></button>`;
     html += '</div>';
 
     if (moves.length > 0) {
@@ -458,6 +459,68 @@ function renderNormal(state, panel) {
     panel.innerHTML = html;
 }
 
+// ── History / Run Record Panel ───────────────────
+function doShowHistory() {
+    const rs = state.run_history || {};
+    const records = rs.records || [];
+    const total = rs.total_runs || 0;
+
+    const overlay = document.createElement('div');
+    overlay.id = 'history-overlay';
+    overlay.style.cssText = `
+        position:fixed;top:0;left:0;right:0;bottom:0;
+        background:rgba(0,0,0,0.85);z-index:900;
+        display:flex;align-items:center;justify-content:center;
+        padding:16px;
+    `;
+    overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+
+    let contentHtml = '';
+    if (records.length === 0) {
+        contentHtml = '<div style="text-align:center;color:#888;padding:30px">尚无历史记录</div>';
+    } else {
+        contentHtml = `<div class="history-list">`;
+        records.forEach(r => {
+            if (r.type === 'death_record') {
+                contentHtml += `
+                    <div class="history-item death">
+                        <div class="history-year">${r.year || '?'}年${r.month || '?'}月</div>
+                        <div class="history-rank">${r.player_rank || '散兵'}</div>
+                        <div class="history-name">${r.player_name || '???'}</div>
+                        <div class="history-cause">${r.death_cause || '陨落'}</div>
+                        <div class="history-exp">经验 ${r.exp || 0}</div>
+                    </div>
+                `;
+            } else {
+                contentHtml += `<div class="history-item">${JSON.stringify(r)}</div>`;
+            }
+        });
+        contentHtml += '</div>';
+    }
+
+    overlay.innerHTML = `
+        <div style="
+            background:#1a1a2e;color:#eee;
+            border-radius:16px;padding:20px;max-width:400px;width:100%;
+            max-height:80vh;overflow-y:auto;
+            font-family:'Noto Serif SC',serif;
+        ">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+                <span style="font-size:18px;font-weight:700">📜 战报史籍</span>
+                <span style="font-size:12px;color:#888">共${total}局</span>
+            </div>
+            ${contentHtml}
+            <button onclick="this.closest('#history-overlay').remove()"
+                style="width:100%;margin-top:14px;padding:10px;background:#333;color:#aaa;
+                       border:none;border-radius:8px;cursor:pointer;font-size:14px">
+                关闭
+            </button>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+}
+
+// ── Map View ────────────────────────────────────
 function renderMapView(state, panel) {
     const map = state.map;
     const cf = state.city_favorability || {};
