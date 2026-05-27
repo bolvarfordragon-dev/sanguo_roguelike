@@ -157,6 +157,11 @@ class SanguoAPI:
                     "id": sid,
                     "name": sk.name,
                     "desc": sk.desc,
+                    "skill_type": sk.skill_type,          # "active" | "passive"
+                    "cost": sk.cost,                       # 碎片消耗，NPC赠送为0
+                    "stat_req": sk.stat_req or {},         # 属性要求
+                    "rank_req": sk.rank_req or None,       # 官职要求
+                    "prereq": sk.prereq or None,           # 前置技能ID
                 })
 
             combat_data = {

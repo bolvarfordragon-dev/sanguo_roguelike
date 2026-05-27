@@ -356,7 +356,7 @@ function renderCombat(state, panel) {
         ${cd.skills && cd.skills.length > 0 ? `
             <div class="action-row" style="margin-top:6px">
                 ${cd.skills.map(s => `
-                    <button class="action-btn skill-btn" onclick="doCombatSkill('${s.id}')">${s.name}<div class="btn-sub">${s.desc}</div></button>
+                    <button class="action-btn skill-btn" onclick='showSkillModal(${JSON.stringify(s).replace(/'/g, "\\'")})'>${s.name}<div class="btn-sub">${s.desc}</div></button>
                 `).join('')}
             </div>
         ` : ''}
@@ -491,6 +491,76 @@ async function doCombat(actionId) {
     const state = await apiCombat(actionId, null);
     if (!state || state.game_status === 'error') return;
     applyState(state);
+}
+
+// =============================================
+// 技能详情弹窗
+// =============================================
+function showSkillModal(skill) {
+    // 如果已显示则关闭
+    const existing = document.getElementById('skill-modal-overlay');
+    if (existing) { existing.remove(); return; }
+
+    const typeLabel = skill.skill_type === 'active' ? '「主动」' : '「被动」';
+    const typeColor = skill.skill_type === 'active' ? '#e74c3c' : '#3498db';
+
+    // 属性要求HTML
+    let reqHtml = '';
+    if (skill.stat_req) {
+        const entries = Object.entries(skill.stat_req);
+        reqHtml = entries.map(([k, v]) => {
+            const playerStat = state.player.stats[k];
+            const ok = playerStat >= v;
+            return `<span style="color:${ok ? '#2ecc71' : '#e74c3c'}">${k} ${playerStat}/${v}</span>`;
+        }).join(' ');
+    }
+
+    // 消耗
+    const costHtml = skill.cost === 0
+        ? '<span style="color:#f39c12">NPC赠送</span>'
+        : `<span style="color:#f1c40f">消耗碎片：${skill.cost}枚</span>`;
+
+    // 前置
+    const prereqHtml = skill.prereq
+        ? `<div style="margin-top:6px;color:#e67e22">前置：需要先学会 [${skill.prereq}]</div>`
+        : '';
+
+    const overlay = document.createElement('div');
+    overlay.id = 'skill-modal-overlay';
+    overlay.style.cssText = `
+        position:fixed;top:0;left:0;right:0;bottom:0;
+        background:rgba(0,0,0,0.7);z-index:1000;
+        display:flex;align-items:flex-end;justify-content:center;
+        padding:20px;
+    `;
+    overlay.onclick = (e) => { if (e.target===overlay) overlay.remove(); };
+
+    overlay.innerHTML = `
+        <div style="
+            background:#1a1a2e;color:#eee;
+            border-radius:16px;padding:20px;max-width:360px;width:100%;
+            font-family:'Noto Serif SC',serif;
+            box-shadow:0 -4px 30px rgba(0,0,0,0.5);
+        ">
+            <div style="font-size:20px;font-weight:700;margin-bottom:10px">
+                ⚔️ ${skill.name}
+                <span style="font-size:14px;color:${typeColor};margin-left:8px">${typeLabel}</span>
+            </div>
+            <div style="font-size:14px;color:#b0b0b0;margin-bottom:12px;line-height:1.5">
+                ${skill.desc}
+            </div>
+            ${reqHtml ? `<div style="margin-bottom:8px">📋 属性要求：${reqHtml}</div>` : ''}
+            <div style="margin-bottom:8px">💎 ${costHtml}</div>
+            ${prereqHtml}
+            <button onclick="this.closest('#skill-modal-overlay').remove(); doCombatSkill('${skill.id}')"
+                style="
+                    width:100%;margin-top:14px;padding:12px;
+                    background:#c0392b;color:#fff;border:none;border-radius:10px;
+                    font-size:15px;font-weight:700;cursor:pointer;
+                ">使用技能</button>
+        </div>
+    `;
+    document.body.appendChild(overlay);
 }
 
 async function doCombatSkill(skillId) {
