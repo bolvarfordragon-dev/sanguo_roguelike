@@ -315,7 +315,7 @@ class SanguoAPI:
 
     def _get_history_data(self):
         """Return run history for the history panel."""
-        history = self.progression.history
+        history = self.engine.progression.history
         # Return last 20 records, most recent first
         records = list(reversed(history))[-20:]
         return {
