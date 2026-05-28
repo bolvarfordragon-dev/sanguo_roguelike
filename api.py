@@ -220,6 +220,7 @@ class SanguoAPI:
             npc_data = {
                 "name": npc.name,
                 "rank": npc.rank,
+                "icon": nd_icon(npc.name, npc.rank),
                 "relation": rel,
                 "relation_tag": rel_tag,
                 "options": [
@@ -681,6 +682,22 @@ class SanguoAPI:
 
 
 # ── Flask Server ──────────────────────────────────────────
+def nd_icon(name, rank):
+    """Return emoji icon for NPC based on name and rank."""
+    portraits = {
+        "关羽": "🗡️", "张飞": "⚔️", "赵云": "🐎",
+        "刘备": "👑", "曹操": "🎖️", "孙权": "🐉",
+        "诸葛亮": "🧩", "周瑜": "🎵", "司马懿": "📜",
+        "吕布": "💀", "张辽": "🛡️", "郭嘉": "📖",
+    }
+    if name in portraits:
+        return portraits[name]
+    t = getattr(rank, 'lower', lambda: '')() if rank else ''
+    if t == '君主': return "👑"
+    if t == '武将': return "⚔️"
+    if t == '文官': return "📖"
+    return "🎭"
+
 from flask import Flask, jsonify, request, send_from_directory
 
 api = SanguoAPI()

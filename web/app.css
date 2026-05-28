@@ -679,3 +679,33 @@ circle[style*="cursor:pointer"] { cursor: pointer; }
 .history-item .battle-enemy { color: #aab; flex: 1; text-align: center; }
 .history-item .battle-loot { font-size: 12px; color: #8a6a14; }
 .history-item .battle-time { font-size: 11px; color: #556; }
+
+/* NPC character card */
+.npc-portrait {
+    font-size: 64px;
+    text-align: center;
+    padding: 16px 0 8px;
+    background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+    border-radius: 12px 12px 0 0;
+    border: 1px solid #2a4a8a;
+    border-bottom: none;
+}
+.npc-meta {
+    background: #16213e;
+    border: 1px solid #2a4a8a;
+    border-top: none;
+    border-radius: 0 0 12px 12px;
+    padding: 8px 16px 12px;
+    text-align: center;
+}
+.npc-name-lg {
+    font-size: 20px;
+    font-weight: bold;
+    color: #d4a017;
+    margin-bottom: 2px;
+}
+.npc-rank-lg {
+    font-size: 13px;
+    color: #8a9adf;
+    margin-bottom: 4px;
+}

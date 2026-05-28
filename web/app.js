@@ -445,8 +445,12 @@ function renderNpc(state, panel) {
     const nd = state.npc_data;
     panel.innerHTML = `
         <div class="npc-info">
-            <div class="npc-name">🎭 ${nd.name}（${nd.rank}）</div>
-            <div class="rel-tag">${nd.relation_tag} 好感度：${nd.relation}</div>
+            <div class="npc-portrait">${nd.icon || "🎭"}</div>
+            <div class="npc-meta">
+                <div class="npc-name-lg">${nd.name}</div>
+                <div class="npc-rank-lg">${nd.rank}</div>
+                <div class="rel-tag">${nd.relation_tag} 好感度：${nd.relation}</div>
+            </div>
         </div>
         <div class="action-row">
             ${nd.options.map(opt => {
