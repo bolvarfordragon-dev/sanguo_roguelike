@@ -524,36 +524,157 @@ function doShowHistory() {
 function renderMapView(state, panel) {
     const map = state.map;
     const cf = state.city_favorability || {};
+    const current = map.current;
+    const connections = map.connections || {};
+    const adjacent = map.adjacent_cities || [];
+
     function getFavColor(city) {
         const fav = cf[city] || 50;
-        if (fav >= 70) return '#2e8b57';
         if (fav >= 90) return '#88cc88';
-        if (fav <= 30) return '#8b0000';
+        if (fav >= 70) return '#2e8b57';
+        if (fav <= 30) return '#cc4444';
         return '#9a7620';
     }
-    function getFavBar(city) {
-        const fav = cf[city] || 50;
-        const color = getFavColor(city);
-        return `<span style="display:inline-block;width:30px;height:4px;background:${color};border-radius:2px;vertical-align:middle;margin-left:4px"></span>`;
+
+    // Build local neighborhood: current + its neighbors + their neighbors (depth-2)
+    const depth1 = new Set([current]);
+    adjacent.forEach(c => depth1.add(c));
+    const depth2 = new Set();
+    adjacent.forEach(c => {
+        (connections[c] || []).forEach(n => {
+            if (!depth1.has(n)) depth2.add(n);
+        });
+    });
+    const visibleCities = [...depth1, ...depth2];
+
+    // Compute simple grid positions (row/col) for each visible city
+    // Use a compact grid layout based on connectivity graph
+    const pos = {};
+    const visited = new Set();
+    const queue = [current];
+    pos[current] = { col: 1, row: 1 };
+    visited.add(current);
+    let maxCol = 1, maxRow = 1;
+
+    // BFS to assign positions
+    const step = 2;
+    const breadth = {};
+    const d1Queue = [{ city: current, dist: 0 }];
+    for (const c of adjacent) breadth[c] = 1;
+    for (const c of depth2) {
+        const adjOfAdj = connections[c] || [];
+        const d1Neighbor = adjOfAdj.find(n => depth1.has(n));
+        if (d1Neighbor && breadth[d1Neighbor] !== undefined) {
+            breadth[c] = breadth[d1Neighbor] + 0.5;
+        } else {
+            breadth[c] = 1;
+        }
     }
-    let html = '<div class="map-grid">';
-    Object.entries(map.regions).forEach(([regKey, regData]) => {
-        html += `<div class="map-region">
-            <div class="map-region-title">${regData.name}</div>`;
-        regData.cities.forEach(city => {
-            const isCurrent = city === map.current;
-            const isAdjacent = state.available_moves && state.available_moves.includes(city);
-            let cls = 'map-city-btn';
-            if (isCurrent) cls += ' current';
-            else if (isAdjacent) cls += ' adjacent';
-            else cls += ' other-city';
-            const icon = isCurrent ? '★' : (isAdjacent ? '→' : '·');
-            const favBar = getFavBar(city);
-            html += `<div class="map-city-wrap"><button class="${cls}" onclick="doMove('${city}')">${icon} ${city}</button>${favBar}</div>`;
+
+    // Assign cols based on breadth, rows compactly
+    const breadthBuckets = {};
+    [...depth1].forEach(c => {
+        const b = breadth[c] || 0;
+        if (!breadthBuckets[b]) breadthBuckets[b] = [];
+        breadthBuckets[b].push(c);
+    });
+    [...depth2].forEach(c => {
+        const b = breadth[c] || 0;
+        if (!breadthBuckets[b]) breadthBuckets[b] = [];
+        breadthBuckets[b].push(c);
+    });
+
+    const sortedBreadths = Object.keys(breadthBuckets).sort((a, b) => a - b);
+    sortedBreadths.forEach((b, bi) => {
+        const cities = breadthBuckets[b];
+        cities.forEach((city, ci) => {
+            pos[city] = { col: (bi * 2), row: ci };
+            maxCol = Math.max(maxCol, bi * 2);
+            maxRow = Math.max(maxRow, ci);
+        });
+    });
+
+    // SVG node radius and spacing
+    const NODE_R = 22;
+    const COL_STEP = 72;
+    const ROW_STEP = 64;
+    const PAD = 24;
+    const svgW = (maxCol + 2) * COL_STEP + PAD * 2;
+    const svgH = (maxRow + 1) * ROW_STEP + PAD * 2 + 20;
+
+    // Build SVG lines
+    let svgLines = '';
+    visibleCities.forEach(city => {
+        (connections[city] || []).forEach(n => {
+            if (pos[city] && pos[n] && visibleCities.includes(n)) {
+                const x1 = PAD + pos[city].col * COL_STEP;
+                const y1 = PAD + pos[city].row * ROW_STEP + 10;
+                const x2 = PAD + pos[n].col * COL_STEP;
+                const y2 = PAD + pos[n].row * ROW_STEP + 10;
+                const isActive = (city === current || n === current) ? '1' : '0.25';
+                const color = (city === current || n === current) ? '#d4a017' : '#4a3520';
+                svgLines += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${color}" stroke-width="1.5" opacity="${isActive}" />`;
+            }
+        });
+    });
+
+    // Build SVG city nodes
+    let svgNodes = '';
+    visibleCities.forEach(city => {
+        const p = pos[city] || { col: 1, row: 1 };
+        const cx = PAD + p.col * COL_STEP;
+        const cy = PAD + p.row * ROW_STEP + 10;
+        const isCurrent = city === current;
+        const isAdj = adjacent.includes(city);
+        const isDim = depth2.has(city);
+        const fill = isCurrent ? '#d4a017' : (isAdj ? '#1a2a1a' : '#111111');
+        const stroke = isCurrent ? '#fff' : (isAdj ? '#d4a017' : '#4a3520');
+        const opacity = isDim ? '0.55' : '1';
+        svgNodes += `<g opacity="${opacity}" style="${isAdj && !isDim ? 'cursor:pointer' : ''}" ${isAdj && !isDim ? `onclick="doMove('${city}')"` : ''}>`;
+        svgNodes += `<circle cx="${cx}" cy="${cy}" r="${NODE_R}" fill="${fill}" stroke="${stroke}" stroke-width="${isCurrent ? 2.5 : 1.5}" />`;
+        const icon = isCurrent ? '★' : (isAdj ? '●' : '·');
+        const iconColor = isCurrent ? '#1a1208' : (isAdj ? '#d4a017' : '#6a5a3a');
+        svgNodes += `<text x="${cx}" y="${cy + 5}" text-anchor="middle" font-size="13" fill="${iconColor}">${icon}</text>`;
+        svgNodes += `<text x="${cx}" y="${cy + NODE_R + 14}" text-anchor="middle" font-size="11" fill="#e8d5a3">${city}</text>`;
+        // Favorite bar
+        const fav = cf[city] || 50;
+        const favW = 24 * fav / 100;
+        const favColor = getFavColor(city);
+        svgNodes += `<rect x="${cx - 12}" y="${cy + NODE_R + 2}" width="${favW}" height="3" rx="1.5" fill="${favColor}" />`;
+        svgNodes += '</g>';
+    });
+
+    let html = '';
+    // SVG Map
+    html += `<div style="overflow-x:auto;overflow-y:hidden;padding:8px 0">
+        <svg width="${svgW + 20}" height="${svgH + 20}" style="display:block;margin:0 auto;max-width:100%">
+            ${svgLines}
+            ${svgNodes}
+        </svg>
+    </div>`;
+
+    // Adjacent city quick-move buttons (touch-friendly large buttons)
+    if (adjacent.length > 0) {
+        html += '<div style="padding:8px 4px 4px;font-size:11px;color:#9a7620;margin-bottom:4px">点击相邻城市快速移动</div>';
+        html += '<div style="display:flex;flex-wrap:wrap;gap:6px;padding:0 4px;">';
+        adjacent.forEach(city => {
+            const fav = cf[city] || 50;
+            const favColor = getFavColor(city);
+            const travelCost = 1; // simplified
+            html += `<button class="map-move-btn" onclick="doMove('${city}')">
+                <span style="font-size:15px">→</span>
+                <span style="font-weight:700">${city}</span>
+                <span style="font-size:10px;color:${favColor};margin-left:4px">❤${fav}</span>
+            </button>`;
         });
         html += '</div>';
-    });
-    html += '</div>';
+    }
+
+    // Region overview toggle (shows all cities in compact grid)
+    html += `<div style="margin-top:12px;border-top:1px solid #2a1a08;padding-top:8px">
+        <button class="action-btn" onclick="renderFullMap(state, panel)" style="width:100%">📍 全州一览（${Object.keys(map.regions).length}州${Object.values(map.regions).reduce((s,r)=>s+r.cities.length,0)}城）</button>
+    </div>`;
+
     html += '<div class="action-row" style="margin-top:8px"><button class="action-btn" onclick="renderActionPanel(currentState)">← 返回</button></div>';
     panel.innerHTML = html;
 }
@@ -580,6 +701,50 @@ async function doMove(target) {
     const state = await apiMove(target);
     if (!state || state.game_status === 'error') return;
     applyState(state);
+}
+
+// ── Full map (all regions, compact grid) ──────────────
+function renderFullMap(state, panel) {
+    const map = state.map;
+    const cf = state.city_favorability || {};
+    const current = map.current;
+    const connections = map.connections || {};
+    const adjacent = map.adjacent_cities || [];
+
+    function getFavColor(city) {
+        const fav = cf[city] || 50;
+        if (fav >= 90) return '#88cc88';
+        if (fav >= 70) return '#2e8b57';
+        if (fav <= 30) return '#cc4444';
+        return '#9a7620';
+    }
+
+    let html = '<div style="padding:4px;font-size:12px;color:#9a7620;margin-bottom:8px">📍 全州地图 · 点击相邻城市移动</div>';
+    html += '<div class="map-full-grid">';
+    Object.entries(map.regions).forEach(([regKey, regData]) => {
+        const isCurrentRegion = regData.cities.includes(current);
+        const regionCls = isCurrentRegion ? 'map-region current-region' : 'map-region';
+        html += `<div class="${regionCls}">`;
+        html += `<div class="map-region-title">${regData.name}</div>`;
+        html += '<div class="region-cities">';
+        regData.cities.forEach(city => {
+            const isAdj = adjacent.includes(city);
+            const isCurr = city === current;
+            const fav = cf[city] || 50;
+            const favColor = getFavColor(city);
+            const cls = isCurr ? 'map-city-btn current' : (isAdj ? 'map-city-btn adjacent' : 'map-city-btn other-city');
+            const icon = isCurr ? '★' : (isAdj ? '→' : '·');
+            if (isAdj) {
+                html += `<button class="${cls}" onclick="doMove('${city}')">${icon} ${city} <span style="font-size:9px;color:${favColor}">❤${fav}</span></button>`;
+            } else {
+                html += `<button class="${cls}" disabled>${icon} ${city}</button>`;
+            }
+        });
+        html += '</div></div>';
+    });
+    html += '</div>';
+    html += '<div style="margin-top:12px"><button class="action-btn" onclick="renderMapView(state, panel)" style="width:100%">← 返回局部图</button></div>';
+    panel.innerHTML = html;
 }
 
 async function doCombat(actionId) {

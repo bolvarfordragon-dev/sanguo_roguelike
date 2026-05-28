@@ -217,9 +217,46 @@ body {
 }
 .map-city-btn:hover { background: #2a1f0a; }
 .map-city-btn.current { color: var(--gold); font-weight: bold; }
-.map-city-btn.adjacent { color: #88cc88; }
+.map-city-btn.adjacent { color: #88cc88; cursor: pointer; }
 .map-city-btn.other-city { color: #555; }
 .map-city-wrap { display: flex; align-items: center; }
+
+/* SVG map city nodes */
+.map-move-btn {
+    background: #1a2510;
+    border: 1px solid #4a6a20;
+    color: #d4a017;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 14px;
+    font-family: inherit;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 90px;
+    min-height: 48px;
+    transition: background 0.15s;
+}
+.map-move-btn:hover { background: #2a3a18; }
+.map-move-btn:active { background: #3a4a20; }
+
+/* Full map grid */
+.map-full-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 16px;
+    padding: 4px 6px;
+    max-height: 50vh;
+    overflow-y: auto;
+}
+.map-full-grid .map-region-title { font-size: 13px; margin-bottom: 2px; }
+.map-full-grid .region-cities { display: flex; flex-direction: column; gap: 2px; }
+.map-full-grid .current-region .map-region-title { color: #d4a017; }
+.map-full-grid .map-city-btn:disabled { cursor: default; }
+
+/* SVG cursor for clickable nodes */
+circle[style*="cursor:pointer"] { cursor: pointer; }
 .city-actions .map-btn { background: #0a1a2a; border-color: #4a6a8a; color: #88aacc; }
 
 

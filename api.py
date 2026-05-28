@@ -19,7 +19,7 @@ import config
 from engine import SanguoEngine
 from combat import COMBAT_ACTIONS
 from skills import get_skill
-from world import get_adjacent_cities, find_path, REGIONS
+from world import get_adjacent_cities, find_path, REGIONS, CITY_CONNECTIONS
 from npc_schedule import is_npc_active, get_npc_location
 from achievements import ACHIEVEMENTS, load_achievements, get_achievement_by_id
 
@@ -332,10 +332,13 @@ class SanguoAPI:
             if current in data["cities"]:
                 region = reg
                 break
+        adj = get_adjacent_cities(current)
         return {
             "current": current,
             "region": region,
             "regions": {reg: {"name": data["name"], "cities": data["cities"]} for reg, data in REGIONS.items()},
+            "adjacent_cities": adj,
+            "connections": CITY_CONNECTIONS,
         }
 
     def move_to(self, target):
