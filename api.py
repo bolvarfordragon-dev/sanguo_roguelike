@@ -182,6 +182,23 @@ class SanguoAPI:
                 "skills": usable_skills,
             }
 
+            # Power comparison from combat engine
+            try:
+                from combat import CombatSession
+                sess = CombatSession(p, enemy, ctx)
+                player_power = round(sess._calc_power(p, "attacker"), 1)
+                enemy_power = round(sess._calc_power(enemy, "defender"), 1)
+                diff = player_power - enemy_power
+                win_rate = max(5, min(95, 50 + diff / 2))
+                combat_data["power"] = {
+                    "player": player_power,
+                    "enemy": enemy_power,
+                    "win_rate": round(win_rate, 1),
+                    "terrain": ctx.get("terrain", "平原"),
+                }
+            except Exception:
+                pass  # power calc optional
+
         elif self.engine.pending_npc_encounter:
             ui_state = "npc"
             enc = self.engine.pending_npc_encounter

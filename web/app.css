@@ -156,6 +156,20 @@ body {
 .combat-enemy { text-align: center; padding: 8px; background: #1a0808; border-radius: 6px; border: 1px solid var(--red); margin-bottom: 8px; }
 .combat-enemy .enemy-name { font-size: 18px; color: #ff4444; font-weight: bold; }
 .combat-enemy .enemy-stats { font-size: 13px; color: var(--text-dim); margin-top: 4px; }
+
+/* Combat power comparison */
+.combat-power { background: #0a0a12; border: 1px solid #3a3a5a; border-radius: 6px; padding: 10px; margin-bottom: 8px; }
+.power-row { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; font-size: 12px; }
+.power-label { width: 60px; color: var(--text-dim); flex-shrink: 0; }
+.power-bar-wrap { flex: 1; height: 6px; background: #2a2a3a; border-radius: 3px; overflow: hidden; }
+.power-bar { display: block; height: 100%; border-radius: 3px; transition: width 0.3s; }
+.power-bar.player { background: linear-gradient(90deg, #226622, #88cc88); }
+.power-bar.enemy { background: linear-gradient(90deg, #882222, #cc6666); }
+.power-value { width: 36px; text-align: right; color: var(--text-dim); font-size: 11px; flex-shrink: 0; }
+.win-rate-row { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-dim); margin-top: 6px; }
+.win-rate-val { font-weight: bold; font-size: 14px; }
+.wr-tag { font-weight: bold; }
+.power-terrain { margin-left: auto; font-size: 11px; color: #666; }
 .skill-btn { background: #1a2a1a; border-color: var(--green); color: #88cc88; }
 
 /* Bottom nav */

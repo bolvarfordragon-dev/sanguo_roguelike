@@ -379,12 +379,37 @@ function renderEquipmentPanel(state) {
 
 function renderCombat(state, panel) {
     const cd = state.combat_data;
+    let powerHtml = '';
+    if (cd.power) {
+        const wr = cd.power.win_rate;
+        const wrColor = wr >= 60 ? '#88cc88' : wr >= 45 ? '#cccc44' : '#cc6666';
+        const wrLabel = wr >= 60 ? '优势' : wr >= 45 ? '均势' : '劣势';
+        powerHtml = `<div class="combat-power">
+            <div class="power-row">
+                <span class="power-label">我军战力</span>
+                <span class="power-bar-wrap"><span class="power-bar player" style="width:${Math.min(100, wr)}%"></span></span>
+                <span class="power-value">${cd.power.player}</span>
+            </div>
+            <div class="power-row">
+                <span class="power-label">敌军战力</span>
+                <span class="power-bar-wrap"><span class="power-bar enemy" style="width:${Math.min(100, 100-wr+50)}%"></span></span>
+                <span class="power-value">${cd.power.enemy}</span>
+            </div>
+            <div class="win-rate-row">
+                <span>胜率</span>
+                <span class="win-rate-val" style="color:${wrColor}">${wr}%</span>
+                <span class="wr-tag" style="color:${wrColor}">【${wrLabel}】</span>
+                <span class="power-terrain">地形：${cd.power.terrain}</span>
+            </div>
+        </div>`;
+    }
     panel.innerHTML = `
         <div class="combat-enemy">
             <div class="enemy-name">⚔️ ${cd.enemy.name}</div>
             <div class="enemy-stats">敌军：${cd.enemy.troops}人 | 地形：${cd.enemy.terrain}</div>
             <div class="enemy-stats">我军：${cd.player_army}人 | 士气：${cd.player_morale}</div>
         </div>
+        ${powerHtml}
         <div class="action-row">
             ${cd.actions.map(a => `
                 <button class="action-btn primary" onclick="doCombat(${a.id})">${a.label}<div class="btn-sub">${a.desc}</div></button>
