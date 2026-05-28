@@ -20,7 +20,7 @@ from engine import SanguoEngine
 from combat import COMBAT_ACTIONS
 from skills import get_skill
 from world import get_adjacent_cities, find_path, REGIONS, CITY_CONNECTIONS
-from npc_schedule import is_npc_active, get_npc_location
+from npc_schedule import is_npc_active, get_npc_location, is_faction_leader
 from achievements import ACHIEVEMENTS, load_achievements, get_achievement_by_id
 
 
@@ -218,6 +218,9 @@ class SanguoAPI:
         elif self.engine.pending_market:
             ui_state = "market"
 
+        elif self.engine.pending_intel:
+            ui_state = "intel"
+
         elif self.engine.pending_death_shop:
             ui_state = "death_shop"
 
@@ -265,6 +268,7 @@ class SanguoAPI:
             "run_history": self._get_history_data(),
             "pending_equipment": self._get_pending_equipment(),
             "pending_death_shop": self.engine.pending_death_shop or None,
+            "pending_intel": getattr(self.engine, 'pending_intel', None),
         }
 
     def _get_pending_campaign(self):
@@ -444,16 +448,55 @@ class SanguoAPI:
         return self.get_state()
 
     def show_intel(self):
-        """Show NPC intelligence report."""
-        old_stdout = sys.stdout
-        sys.stdout = StringIO()
-        try:
-            self.engine.show_intel()
-        finally:
-            output = sys.stdout.getvalue()
-            sys.stdout = old_stdout
+        """Build intel data: NPC locations + paths (returns structured data)."""
+        cost = 20
+        p = self.engine.state.player
+        if p.gold < cost:
+            self._add_narrative(f"盘缠不足，打听消息需要{cost}金，你只有{p.gold}金。")
+            return self.get_state()
+        p.gold -= cost
 
-        self._add_narrative(output)
+        current_year = self.engine.state.year
+        from world import find_path
+
+        npc_list = []
+        for npc_name, npc in self.engine.state.npcs.items():
+            if npc.hp <= 0:
+                continue
+            if not is_npc_active(npc_name, current_year):
+                continue
+            loc = get_npc_location(npc_name, current_year)
+            npc_type = getattr(npc, 'npc_type', '武将')
+            leader = is_faction_leader(npc_name)
+            recruited = self.engine.state.event_flags.get(f'已招募_{npc_name}', False)
+
+            if loc == p.location:
+                location_hint = "📍当前所在"
+            else:
+                path = find_path(p.location, loc)
+                if path and len(path) <= 4:
+                    hops = "→".join(path[1:])
+                    location_hint = f"→{hops}（{len(path)-1}步）"
+                else:
+                    location_hint = f"「{loc}」"
+
+            npc_list.append({
+                "name": npc_name,
+                "type": npc_type,
+                "icon": '⚔️' if npc_type == '武将' else '📚',
+                "location_hint": location_hint,
+                "city": loc,
+                "is_leader": leader,
+                "is_recruited": recruited,
+                "is_here": loc == p.location,
+            })
+
+        self.engine.pending_intel = {
+            "cost": cost,
+            "gold_left": p.gold,
+            "npcs": npc_list,
+        }
+        self._add_narrative(f"📰 江湖消息（花费{cost}金）")
         return self.get_state()
 
     def visit_tavern(self):

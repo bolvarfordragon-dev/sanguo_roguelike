@@ -202,6 +202,7 @@ function renderActionPanel(state) {
     else if (ui === 'npc') renderNpc(state, panel);
     else if (ui === 'market') renderMarket(state, panel);
     else if (ui === 'tavern_choice') renderTavernChoice(state, panel);
+    else if (ui === 'intel') renderIntel(state, panel);
     else if (ui === 'death_shop') renderDeathShop(state, panel);
     else renderNormal(state, panel);
 }
@@ -412,6 +413,27 @@ function renderNpc(state, panel) {
             }).join('')}
         </div>
     `;
+}
+
+function renderIntel(state, panel) {
+    const intel = state.pending_intel;
+    if (!intel) { renderNormal(state, panel); return; }
+    let html = `<div class="intel-header">📰 江湖消息（花费${intel.cost}金）</div>`;
+    html += '<div class="intel-list">';
+    intel.npcs.forEach(npc => {
+        const cls = npc.is_here ? 'intel-npc here' : (npc.is_leader ? 'intel-npc leader' : 'intel-npc');
+        html += `<div class="${cls}">
+            <span class="intel-icon">${npc.icon}</span>
+            <span class="intel-name">${npc.name}</span>
+            <span class="intel-loc">${npc.location_hint}</span>
+            ${npc.is_leader ? '<span class="intel-tag">阵营领袖</span>' : ''}
+            ${npc.is_recruited ? '<span class="intel-tag recruited">✅已招募</span>' : ''}
+        </div>`;
+    });
+    html += '</div>';
+    html += `<div class="intel-footer">💰 剩余金钱：${intel.gold_left}</div>`;
+    html += '<div class="action-row" style="margin-top:8px"><button class="action-btn" onclick="renderActionPanel(currentState)">← 返回</button></div>';
+    panel.innerHTML = html;
 }
 
 function renderMarket(state, panel) {
@@ -906,11 +928,7 @@ async function doMarketAuto() {
 async function doIntelAuto() {
     const state = await apiIntel();
     if (!state || state.game_status === 'error') return;
-    if (state.narrative) addNarrative(state.narrative);
-    if (currentState && state.player) {
-        currentState.player.gold = state.player.gold;
-        document.getElementById('val-gold').textContent = state.player.gold;
-    }
+    applyState(state);
 }
 
 async function doVisitTavern() {

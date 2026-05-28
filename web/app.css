@@ -181,6 +181,19 @@ body {
 /* Market */
 .market-info { text-align: center; padding: 8px; background: #0a1a0a; border-radius: 6px; border: 1px solid var(--green); font-size: 14px; margin-bottom: 8px; }
 
+/* Intel report */
+.intel-header { text-align: center; padding: 8px; background: #0a0a1a; border-radius: 6px; border: 1px solid #4a4a8a; font-size: 14px; color: #8888cc; margin-bottom: 8px; }
+.intel-list { display: flex; flex-direction: column; gap: 4px; }
+.intel-npc { display: flex; align-items: center; gap: 6px; padding: 6px 8px; background: #0f0f1a; border-radius: 4px; font-size: 13px; }
+.intel-npc.here { background: #1a1a0a; border: 1px solid #4a6a20; }
+.intel-npc.leader { border-left: 2px solid #8b6914; }
+.intel-icon { font-size: 14px; flex-shrink: 0; }
+.intel-name { font-weight: bold; color: #e8d5a3; flex-shrink: 0; }
+.intel-loc { color: #9a7620; flex: 1; }
+.intel-tag { font-size: 10px; padding: 1px 4px; border-radius: 3px; background: #2a2a0a; color: #888; }
+.intel-tag.recruited { color: #88cc88; }
+.intel-footer { text-align: center; padding: 6px; font-size: 12px; color: #888; margin-top: 4px; }
+
 /* NPC */
 .npc-info { text-align: center; padding: 8px; background: #1a1a0a; border-radius: 6px; border: 1px solid var(--gold-dim); font-size: 14px; margin-bottom: 8px; }
 .npc-name { font-size: 18px; color: var(--gold); font-weight: bold; }

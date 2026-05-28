@@ -74,6 +74,7 @@ class SanguoEngine:
         self.pending_campaign = None # 待处理的战役（显示介绍界面）
         self.pending_equipment = None  # 待处理的装备掉落替换
         self.pending_death_shop = None  # death shop UI data
+        self.pending_intel = None       # intel panel UI data
         self.active_campaign = None  # 当前进行中的战役
         self.campaign_months_left = 0  # 战役剩余月数
         self.silent = silent
