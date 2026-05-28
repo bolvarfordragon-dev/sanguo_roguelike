@@ -248,11 +248,23 @@ function updateStats(state) {
     document.getElementById('val-exp').textContent = p.exp;
 
     const stats = p.stats;
-    document.getElementById('stat-wu').textContent = stats['武'] || 0;
-    document.getElementById('stat-zhi').textContent = stats['智'] || 0;
-    document.getElementById('stat-ming').textContent = stats['名'] || 0;
-    document.getElementById('stat-mei').textContent = stats['魅'] || 0;
-    document.getElementById('stat-yun').textContent = stats['运'] || 0;
+    const wu = stats['武'] || 0;
+    const zhi = stats['智'] || 0;
+    const ming = stats['名'] || 0;
+    const mei = stats['魅'] || 0;
+    const yun = stats['运'] || 0;
+    document.getElementById('stat-wu').textContent = wu;
+    document.getElementById('stat-zhi').textContent = zhi;
+    document.getElementById('stat-ming').textContent = ming;
+    document.getElementById('stat-mei').textContent = mei;
+    document.getElementById('stat-yun').textContent = yun;
+    // Update color bars (max display width = 200 for full bar)
+    const maxStat = 100;
+    document.getElementById('attr-fill-wu').style.width = Math.min(100, wu) + '%';
+    document.getElementById('attr-fill-zhi').style.width = Math.min(100, zhi) + '%';
+    document.getElementById('attr-fill-ming').style.width = Math.min(100, ming) + '%';
+    document.getElementById('attr-fill-mei').style.width = Math.min(100, mei) + '%';
+    document.getElementById('attr-fill-yun').style.width = Math.min(100, yun) + '%';
 }
 
 function applyState(state) {

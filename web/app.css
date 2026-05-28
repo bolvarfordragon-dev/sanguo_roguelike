@@ -98,11 +98,43 @@ body {
     border-bottom: 1px solid var(--border);
     padding: 6px 12px;
     display: flex;
-    gap: 10px;
+    gap: 4px;
     flex-wrap: wrap;
+    align-items: center;
 }
-.attr-tag { font-size: 13px; color: var(--gold-dim); }
-.attr-tag span { color: var(--text); margin-left: 2px; }
+
+/* Attribute color bars */
+.attr-bar-wrap {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    flex: 1;
+    min-width: 60px;
+}
+.attr-icon { font-size: 12px; }
+.attr-label { font-size: 12px; color: var(--text-dim); width: 14px; }
+.attr-bar-bg {
+    flex: 1;
+    height: 8px;
+    background: #2a2a2a;
+    border-radius: 4px;
+    overflow: hidden;
+    min-width: 24px;
+}
+.attr-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.4s ease;
+}
+.attr-val { font-size: 12px; color: var(--text); min-width: 20px; text-align: right; }
+
+/* Attribute colors for bars */
+#attr-fill-wu  { background: linear-gradient(90deg, #8b2222, #cc4444); }
+#attr-fill-zhi { background: linear-gradient(90deg, #2244aa, #4488ff); }
+#attr-fill-ming{ background: linear-gradient(90deg, #8b6914, #d4a017); }
+#attr-fill-mei { background: linear-gradient(90deg, #8844aa, #cc88dd); }
+#attr-fill-yun { background: linear-gradient(90deg, #2e8b57, #66cc88); }
+
 
 /* Narrative area */
 .narrative-area {

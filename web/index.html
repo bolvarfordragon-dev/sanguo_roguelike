@@ -70,11 +70,31 @@
 
         <!-- Main stats display -->
         <div class="main-stats">
-            <span class="attr-tag">⚔️武<span id="stat-wu">40</span></span>
-            <span class="attr-tag">🧠智<span id="stat-zhi">30</span></span>
-            <span class="attr-tag">📜名<span id="stat-ming">10</span></span>
-            <span class="attr-tag">💫魅<span id="stat-mei">20</span></span>
-            <span class="attr-tag">🍀运<span id="stat-yun">30</span></span>
+            <div class="attr-bar-wrap" id="attr-bar-wu" title="武力">
+                <span class="attr-icon">⚔️</span><span class="attr-label">武</span>
+                <div class="attr-bar-bg"><div class="attr-bar-fill" id="attr-fill-wu" style="width:40%"></div></div>
+                <span class="attr-val" id="stat-wu">40</span>
+            </div>
+            <div class="attr-bar-wrap" id="attr-bar-zhi" title="智力">
+                <span class="attr-icon">🧠</span><span class="attr-label">智</span>
+                <div class="attr-bar-bg"><div class="attr-bar-fill" id="attr-fill-zhi" style="width:30%"></div></div>
+                <span class="attr-val" id="stat-zhi">30</span>
+            </div>
+            <div class="attr-bar-wrap" id="attr-bar-ming" title="名望">
+                <span class="attr-icon">📜</span><span class="attr-label">名</span>
+                <div class="attr-bar-bg"><div class="attr-bar-fill" id="attr-fill-ming" style="width:10%"></div></div>
+                <span class="attr-val" id="stat-ming">10</span>
+            </div>
+            <div class="attr-bar-wrap" id="attr-bar-mei" title="魅力">
+                <span class="attr-icon">💫</span><span class="attr-label">魅</span>
+                <div class="attr-bar-bg"><div class="attr-bar-fill" id="attr-fill-mei" style="width:20%"></div></div>
+                <span class="attr-val" id="stat-mei">20</span>
+            </div>
+            <div class="attr-bar-wrap" id="attr-bar-yun" title="运气">
+                <span class="attr-icon">🍀</span><span class="attr-label">运</span>
+                <div class="attr-bar-bg"><div class="attr-bar-fill" id="attr-fill-yun" style="width:30%"></div></div>
+                <span class="attr-val" id="stat-yun">30</span>
+            </div>
         </div>
 
         <!-- Top banners for campaigns/choices/equipment -->
