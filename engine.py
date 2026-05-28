@@ -1318,6 +1318,19 @@ class SanguoEngine:
         if side and campaign.side_choice:
             self.state.event_flags[f"campaign_{campaign.id}_side"] = side
 
+    def handle_campaign_retreat(self):
+        """Player retreats from active campaign (with penalty)."""
+        if not self.active_campaign:
+            return
+        campaign = self.active_campaign
+        flag = f"campaign_{campaign.id}_resolved"
+        self.state.event_flags[flag] = True
+        self.state.event_flags[f"campaign_{campaign.id}_retreated"] = True
+        self.active_campaign = None
+        self.campaign_months_left = 0
+        # 名望惩罚
+        self.state.player.modify_stat("名", -20)
+
     def handle_equipment_choice(self, slot_index):
         """Replace equipment at slot_index with pending equipment drop."""
         if self.pending_equipment is None:

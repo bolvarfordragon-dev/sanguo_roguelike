@@ -764,6 +764,11 @@ def campaign_choice():
     api.engine.handle_campaign_choice(bool(accept), side)
     return jsonify(api.get_state())
 
+@app.route("/api/campaign_retreat", methods=["POST"])
+def campaign_retreat():
+    api.engine.handle_campaign_retreat()
+    return jsonify(api.get_state())
+
 @app.route("/api/choice", methods=["POST"])
 def choice():
     data = request.json or {}

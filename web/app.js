@@ -69,6 +69,10 @@ async function apiCampaignChoice(accept, side) {
     return callAPI('POST', '/campaign_choice', { accept, side });
 }
 
+async function apiCampaignRetreat() {
+    return callAPI('POST', '/campaign_retreat', {});
+}
+
 async function apiChoice(choiceId) {
     return callAPI('POST', '/choice', { choice_id: String(choiceId) });
 }
@@ -328,6 +332,12 @@ function renderActiveCampaignBanner(state, container) {
     const div = document.createElement('div');
     div.className = 'campaign-active-badge';
     div.textContent = `⚔️ 战役进行中：${ac.name}`;
+    const retreatBtn = document.createElement('button');
+    retreatBtn.className = 'action-btn danger';
+    retreatBtn.style.cssText = 'margin-left:8px;font-size:12px;padding:2px 8px';
+    retreatBtn.textContent = '🚶 撤退';
+    retreatBtn.onclick = doCampaignRetreat;
+    div.appendChild(retreatBtn);
     container.appendChild(div);
 }
 
@@ -1029,6 +1039,13 @@ async function doCampaignAccept(side) {
 
 async function doCampaignDecline() {
     const state = await apiCampaignChoice(false, null);
+    if (!state || state.game_status === 'error') return;
+    applyState(state);
+}
+
+async function doCampaignRetreat() {
+    if (!confirm('确定要撤退吗？名望-20，且无法获得战役奖励。')) return;
+    const state = await apiCampaignRetreat();
     if (!state || state.game_status === 'error') return;
     applyState(state);
 }
