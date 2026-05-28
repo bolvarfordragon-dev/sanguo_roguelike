@@ -436,6 +436,27 @@ function renderIntel(state, panel) {
     panel.innerHTML = html;
 }
 
+function renderTavernChoice(state, panel) {
+    const npcs = state.tavern_npcs || [];
+    if (npcs.length === 0) {
+        panel.innerHTML = '<div style="text-align:center;color:#888;padding:20px">酒馆里无人</div>';
+        return;
+    }
+    let html = '<div class="tavern-header">🍶 酒馆中数人聚坐，点击其中一人开始交谈</div>';
+    html += '<div class="tavern-npc-list">';
+    npcs.forEach(npc => {
+        const typeIcon = npc.npc_type === '文官' ? '📚' : '⚔️';
+        html += `<button class="tavern-npc-btn" onclick="doTavernChoice('${npc.id}')">
+            <span class="tavern-npc-icon">${typeIcon}</span>
+            <span class="tavern-npc-name">${npc.name}</span>
+            <span class="tavern-npc-rank">${npc.rank}</span>
+        </button>`;
+    });
+    html += '</div>';
+    html += '<div class="action-row" style="margin-top:8px"><button class="action-btn" onclick="doTavernCancel()">← 离开酒馆</button></div>';
+    panel.innerHTML = html;
+}
+
 function renderMarket(state, panel) {
     const md = state.market_data;
     panel.innerHTML = `

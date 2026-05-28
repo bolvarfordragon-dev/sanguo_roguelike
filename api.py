@@ -538,7 +538,7 @@ class SanguoAPI:
         self._tavern_npcs = npcs_here
         state = self.get_state()
         state["ui_state"] = "tavern_choice"
-        state["tavern_npcs"] = [{"id": str(i+1), "name": n.name, "rank": n.rank} for i, n in enumerate(npcs_here)]
+        state["tavern_npcs"] = [{"id": str(i+1), "name": n.name, "rank": n.rank, "npc_type": getattr(n, 'npc_type', '武将')} for i, n in enumerate(npcs_here)]
         return state
 
     def resolve_tavern_choice(self, choice_idx):

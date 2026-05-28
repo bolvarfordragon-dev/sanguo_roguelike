@@ -194,6 +194,16 @@ body {
 .intel-tag.recruited { color: #88cc88; }
 .intel-footer { text-align: center; padding: 6px; font-size: 12px; color: #888; margin-top: 4px; }
 
+/* Tavern */
+.tavern-header { text-align: center; padding: 8px; background: #1a0a1a; border-radius: 6px; border: 1px solid #8a4a8a; font-size: 13px; color: #caaaea; margin-bottom: 8px; }
+.tavern-npc-list { display: flex; flex-direction: column; gap: 6px; }
+.tavern-npc-btn { display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: #1a0a1a; border: 1px solid #4a2a4a; border-radius: 8px; cursor: pointer; min-height: 52px; font-family: inherit; transition: background 0.15s; }
+.tavern-npc-btn:hover { background: #2a1a2a; }
+.tavern-npc-btn:active { background: #3a2a3a; }
+.tavern-npc-icon { font-size: 18px; flex-shrink: 0; }
+.tavern-npc-name { font-weight: bold; font-size: 15px; color: #e8d5a3; flex: 1; }
+.tavern-npc-rank { font-size: 12px; color: #8a7a5a; }
+
 /* NPC */
 .npc-info { text-align: center; padding: 8px; background: #1a1a0a; border-radius: 6px; border: 1px solid var(--gold-dim); font-size: 14px; margin-bottom: 8px; }
 .npc-name { font-size: 18px; color: var(--gold); font-weight: bold; }
