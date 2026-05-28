@@ -1,16 +1,58 @@
 /* 三国文字Roguelike - Web UI Client (v3 with campaigns, choices, equipment) */
 const API = '/api';
+const SAVE_KEY = 'sanguo_game_v1';
 
 let currentState = null;
 
+// ── localStorage Save / Load ──────────────────────────
+async function saveGame(state) {
+    try {
+        localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+    } catch (e) {
+        console.warn('localStorage save failed:', e);
+    }
+}
+
+function loadSavedGame() {
+    try {
+        const raw = localStorage.getItem(SAVE_KEY);
+        return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+        return null;
+    }
+}
+
+function clearSavedGame() {
+    try { localStorage.removeItem(SAVE_KEY); } catch(e) {}
+}
+
+// ── Loading indicator ──────────────────────────────
+function showLoading(show) {
+    let el = document.getElementById('loading-indicator');
+    if (!el) {
+        el = document.createElement('div');
+        el.id = 'loading-indicator';
+        el.innerHTML = '<div class="loading-spinner"></div>';
+        document.body.appendChild(el);
+    }
+    el.style.display = show ? 'flex' : 'none';
+}
+
 // ── API Calls ────────────────────────────────────────
 async function callAPI(method, endpoint, body) {
+    showLoading(true);
     const res = await fetch(`${API}${endpoint}`, {
         method,
         headers: body ? { 'Content-Type': 'application/json' } : {},
         body: body ? JSON.stringify(body) : undefined,
     });
-    return res.json();
+    const data = await res.json();
+    showLoading(false);
+    // Auto-save after every API call (if valid game state)
+    if (data && data.game_status && data.game_status !== 'error') {
+        saveGame(data);
+    }
+    return data;
 }
 
 async function apiGetState() {
@@ -1151,15 +1193,32 @@ async function dismissMonthlyReport() {
     if (existing) existing.remove();
     await callAPI('POST', '/monthly_report_dismiss', {});
 }
-    const data = await callAPI('GET', '/achievements');
-    renderAchievementsPanel(data);
-    showScreen('achievements-panel');
+// ── Bottom Sheet helpers ─────────────────────────────
+function openBottomSheet(id) {
+    const sheet = document.getElementById(id);
+    if (!sheet) return;
+    sheet.classList.add('active');
+    sheet.onclick = (e) => { if (e.target === sheet) closeBottomSheet(id); };
+}
+
+function closeBottomSheet(id) {
+    const sheet = document.getElementById(id);
+    if (sheet) sheet.classList.remove('active');
+}
+
+function doShowAchievements() {
+    callAPI('GET', '/achievements').then(data => {
+        renderAchievementsPanel(data);
+        openBottomSheet('achievements-sheet');
+    });
 }
 
 function renderAchievementsPanel(data) {
     const list = document.getElementById('ach-list');
+    const summary = document.getElementById('ach-summary');
     if (!list || !data) return;
-    list.innerHTML = `<div class="ach-summary">已解锁：${data.unlocked} / ${data.total}</div>`;
+    if (summary) summary.textContent = `已解锁：${data.unlocked} / ${data.total}`;
+    list.innerHTML = '';
     data.achievements.forEach(ach => {
         const cls = ach.unlocked ? 'ach-item unlocked' : 'ach-item locked';
         const status = ach.unlocked ? '✅' : '🔒';
@@ -1175,21 +1234,86 @@ function renderAchievementsPanel(data) {
     });
 }
 
-function closeAchievements() {
-    showScreen('game-screen');
+function doShowHistory() {
+    const content = document.getElementById('history-content');
+    if (!content) return;
+    const rs = currentState && currentState.run_history ? currentState.run_history : {};
+    const records = rs.records || [];
+    const total = rs.total_runs || 0;
+    const review = currentState && currentState.pending_death_review ? currentState.pending_death_review : {};
+    const battles = review.battles || [];
+    const events = review.events || [];
+
+    let battlesHtml = '<div style="text-align:center;color:#556;font-size:13px;padding:10px">尚无战斗记录</div>';
+    if (battles.length > 0) {
+        battlesHtml = battles.slice().reverse().map(b => {
+            const r = b.result === 'win' ? '胜' : '负';
+            const loot = b.result === 'win' ? `+${b.exp_gain}经验 +${b.gold}金 +${b.food}粮` : '';
+            return `<div class="history-item ${b.result}"><span class="battle-time">${b.year}年${b.month}月</span><span style="font-weight:bold;color:${b.result==='win'?'#2ecc71':'#e74c3c'}">${r}</span><span style="flex:1;text-align:center">${b.enemy}</span>${loot ? `<span style="font-size:12px;color:#8a6a14">${loot}</span>` : ''}</div>`;
+        }).join('');
+    }
+    let eventsHtml = '<div style="text-align:center;color:#556;font-size:13px;padding:10px">尚无历史事件</div>';
+    if (events.length > 0) {
+        eventsHtml = events.slice().reverse().map(ev => {
+            return `<div class="history-item"><span class="battle-time">${ev.year}年${ev.month}月</span><span style="color:#d4a017">★</span><span style="flex:1;text-align:center;color:#c8d8f0">${ev.name}</span></div>`;
+        }).join('');
+    }
+    let recordsHtml = '<div style="text-align:center;color:#556;font-size:13px;padding:10px">尚无历史记录</div>';
+    if (records.length > 0) {
+        recordsHtml = records.map(r => `<div class="history-item death"><div style="display:flex;gap:8px;align-items:center"><span style="color:#d4a017">⚰</span><span>${r.year||'?'}年${r.month||'?'}月</span><span>${r.player_name||'???'}</span><span style="color:#8a6a14">${r.player_rank||'散兵'}</span></div><div style="font-size:12px;color:#888">${r.death_cause||'陨落'} | 经验 ${r.exp||0}</div></div>`).join('');
+    }
+
+    content.innerHTML = `
+        <div style="font-size:12px;color:#888;text-align:center;margin-bottom:12px">共${total}局</div>
+        <div class="history-section">
+            <div class="history-section-title">⚔️ 战斗记录</div>
+            ${battlesHtml}
+        </div>
+        <div class="history-section">
+            <div class="history-section-title">★ 历史事件</div>
+            ${eventsHtml}
+        </div>
+        ${records.length > 0 ? `<div class="history-section"><div class="history-section-title">📖 往局回顾</div>${recordsHtml}</div>` : ''}
+    `;
+    openBottomSheet('history-sheet');
 }
 
-// ── Init ─────────────────────────────────────────────
-document.getElementById('btn-new-game').addEventListener('click', newGame);
+document.addEventListener('DOMContentLoaded', () => {
+    const closeAch = document.getElementById('close-ach-sheet');
+    if (closeAch) closeAch.onclick = () => closeBottomSheet('achievements-sheet');
+    const closeHist = document.getElementById('close-history-sheet');
+    if (closeHist) closeHist.onclick = () => closeBottomSheet('history-sheet');
+});
 
-// Auto-load state on page load
-apiGetState().then(state => {
-    if (state && state.game_status === 'playing') {
-        currentState = state;
-        showScreen('game-screen');
-        updateStats(state);
-        if (state.narrative) addNarrative(state.narrative);
-        renderActionPanel(state);
-        renderEquipmentPanel(state);
-    }
-}).catch(() => {});
+// ── Init ─────────────────────────────────────────────
+document.getElementById('btn-new-game').addEventListener('click', () => {
+    clearSavedGame();
+    newGame();
+});
+
+function tryResumeGame(savedState) {
+    if (!savedState) return false;
+    currentState = savedState;
+    showScreen('game-screen');
+    updateStats(savedState);
+    if (savedState.narrative) addNarrative(savedState.narrative);
+    renderActionPanel(savedState);
+    renderEquipmentPanel(savedState);
+    return true;
+}
+
+const saved = loadSavedGame();
+if (saved && saved.game_status === 'playing') {
+    tryResumeGame(saved);
+} else {
+    apiGetState().then(state => {
+        if (state && state.game_status === 'playing') {
+            currentState = state;
+            showScreen('game-screen');
+            updateStats(state);
+            if (state.narrative) addNarrative(state.narrative);
+            renderActionPanel(state);
+            renderEquipmentPanel(state);
+        }
+    }).catch(() => {});
+}

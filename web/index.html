@@ -99,21 +99,25 @@
             <button class="nav-btn" onclick="doShowHistory()">📜战报</button>
         </div>
 
-        <!-- Achievements Panel (overlay) -->
-        <div id="achievements-panel" class="screen">
-            <div class="ach-header">
-                <h2>🏆 成就列表</h2>
-                <button class="action-btn" onclick="closeAchievements()">← 返回</button>
+        <!-- Achievements Panel (Bottom Sheet) -->
+        <div id="achievements-sheet" class="bottom-sheet-overlay">
+            <div class="bottom-sheet">
+                <div class="sheet-handle"></div>
+                <div class="sheet-title">🏆 成就列表</div>
+                <div class="ach-summary" id="ach-summary" style="text-align:center;color:#d4a017;margin-bottom:12px"></div>
+                <div id="ach-list" class="ach-list"></div>
+                <button id="close-ach-sheet" class="action-btn" style="width:100%;margin-top:12px;min-height:48px">关闭</button>
             </div>
-            <div id="ach-list" class="ach-list"></div>
         </div>
-        <!-- History Panel (overlay) -->
-        <div id="history-panel" class="screen">
-            <div class="ach-header">
-                <h2>📜 本局战报</h2>
-                <button class="action-btn" onclick="closeHistory()">← 返回</button>
+
+        <!-- History Panel (Bottom Sheet) -->
+        <div id="history-sheet" class="bottom-sheet-overlay">
+            <div class="bottom-sheet">
+                <div class="sheet-handle"></div>
+                <div class="sheet-title">📜 本局战报</div>
+                <div id="history-content"></div>
+                <button id="close-history-sheet" class="action-btn" style="width:100%;margin-top:12px;min-height:48px">关闭</button>
             </div>
-            <div id="history-list" class="ach-list"></div>
         </div>
     </div>
 </div>
