@@ -288,6 +288,8 @@ class SanguoAPI:
             "pending_equipment": self._get_pending_equipment(),
             "pending_death_shop": self.engine.pending_death_shop or None,
             "pending_intel": getattr(self.engine, 'pending_intel', None),
+            "pending_campaign": self._get_pending_campaign(),
+            "pending_choice": self._get_pending_choice(),
         }
 
     def _get_pending_campaign(self):
