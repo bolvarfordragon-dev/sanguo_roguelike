@@ -605,3 +605,46 @@ circle[style*="cursor:pointer"] { cursor: pointer; }
     color: #8a7840;
     margin-bottom: 16px;
 }
+
+/* Monthly financial report */
+.monthly-report {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.9);
+    background: linear-gradient(135deg, #0a1628 0%, #1a2a4a 100%);
+    border: 1px solid #2a4a8a;
+    border-radius: 10px;
+    padding: 20px 24px;
+    font-size: 14px;
+    color: #c8d8f0;
+    z-index: 9999;
+    opacity: 0;
+    transition: opacity 0.25s, transform 0.25s;
+    min-width: 240px;
+    text-align: center;
+}
+.monthly-report.visible {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+}
+.mr-title {
+    font-size: 16px;
+    font-weight: bold;
+    color: #4a8aff;
+    margin-bottom: 10px;
+}
+.mr-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 3px 0;
+    font-size: 13px;
+    color: #8aafdf;
+}
+.mr-net {
+    border-top: 1px solid #2a4a8a;
+    margin-top: 6px;
+    padding-top: 6px;
+    font-weight: bold;
+    font-size: 14px;
+}

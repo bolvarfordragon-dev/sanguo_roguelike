@@ -165,6 +165,9 @@ function applyState(state) {
     if (state.pending_rank_up) {
         showRankUpToast(state.pending_rank_up);
     }
+    if (state.pending_monthly_report) {
+        showMonthlyReport(state.pending_monthly_report);
+    }
 }
 
 // ── Run stats bar ─────────────────────────────────
@@ -1116,6 +1119,38 @@ async function dismissRankUp() {
     const existing = document.getElementById('rankup-toast');
     if (existing) existing.remove();
     await callAPI('POST', '/rank_up_dismiss', {});
+}
+
+function showMonthlyReport(data) {
+    const el = document.getElementById('monthly-report');
+    if (el) el.remove();
+    const div = document.createElement('div');
+    div.id = 'monthly-report';
+    div.className = 'monthly-report';
+    const campNote = data.campaign_active ? '<div style="color:#e74c3c;font-size:12px;margin-top:4px">⚔️ 战役期间粮草消耗翻倍</div>' : '';
+    div.innerHTML = `
+        <div class="mr-title">📋 本月收支</div>
+        <div class="mr-row"><span>粮草消耗</span><span style="color:#e74c3c">-${data.food_cost}粮</span></div>
+        <div class="mr-row"><span>基础消耗</span><span>-3 粮</span></div>
+        ${data.campaign_active ? '<div class="mr-row" style="color:#e74c3c"><span>战役消耗</span><span>+3 粮</span></div>' : ''}
+        <div class="mr-row"><span>金俸禄</span><span style="color:#2ecc71">+${data.salary}金</span></div>
+        <div class="mr-row"><span>日常消耗</span><span>-1 金</span></div>
+        <div class="mr-row mr-net">
+            <span>净收益</span>
+            <span style="color:${data.gold_after >= data.gold_before ? '#2ecc71' : '#e74c3c'}">
+                金${data.gold_after - data.gold_before >= 0 ? '+' : ''}${data.gold_after - data.gold_before} / 粮${data.food_after - data.food_before >= 0 ? '+' : ''}${data.food_after - data.food_before}
+            </span>
+        </div>
+        <button class="action-btn primary" onclick="dismissMonthlyReport()" style="margin-top:10px">确定</button>
+    `;
+    document.body.appendChild(div);
+    setTimeout(() => div.classList.add('visible'), 50);
+}
+
+async function dismissMonthlyReport() {
+    const existing = document.getElementById('monthly-report');
+    if (existing) existing.remove();
+    await callAPI('POST', '/monthly_report_dismiss', {});
 }
     const data = await callAPI('GET', '/achievements');
     renderAchievementsPanel(data);

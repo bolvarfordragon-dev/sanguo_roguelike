@@ -76,6 +76,7 @@ class SanguoEngine:
         self.pending_death_shop = None  # death shop UI data
         self.pending_intel = None       # intel panel UI data
         self.pending_rank_up = None     # rank-up celebration UI data
+        self.pending_monthly_report = None  # monthly financial report UI data
         self.active_campaign = None  # 当前进行中的战役
         self.campaign_months_left = 0  # 战役剩余月数
         self.silent = silent
@@ -963,6 +964,18 @@ class SanguoEngine:
         # 官职月俸
         salary = config.RANK_SALARY.get(p.rank, 5)
         p.gold += salary
+        # 月度收支报告（粮草-3，体力恢复+25，金扣除+俸禄）
+        campaign_penalty = 3 if self.active_campaign else 0
+        self.pending_monthly_report = {
+            "food_cost": 3 + campaign_penalty,
+            "gold_spent": 1,
+            "salary": salary,
+            "food_before": p.food + 3 + campaign_penalty,
+            "food_after": p.food,
+            "gold_before": p.gold - salary + 1,
+            "gold_after": p.gold,
+            "campaign_active": bool(self.active_campaign),
+        }
         if p.food == 0:
             if "饥饿" not in p.effects:
                 p.effects.append("饥饿")

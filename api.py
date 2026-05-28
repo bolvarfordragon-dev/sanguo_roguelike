@@ -289,6 +289,7 @@ class SanguoAPI:
             "pending_death_shop": self.engine.pending_death_shop or None,
             "pending_intel": getattr(self.engine, 'pending_intel', None),
             "pending_rank_up": getattr(self.engine, 'pending_rank_up', None),
+            "pending_monthly_report": getattr(self.engine, 'pending_monthly_report', None),
             "pending_campaign": self._get_pending_campaign(),
             "pending_choice": self._get_pending_choice(),
         }
@@ -774,6 +775,11 @@ def campaign_retreat():
 @app.route("/api/rank_up_dismiss", methods=["POST"])
 def rank_up_dismiss():
     api.engine.pending_rank_up = None
+    return jsonify(api.get_state())
+
+@app.route("/api/monthly_report_dismiss", methods=["POST"])
+def monthly_report_dismiss():
+    api.engine.pending_monthly_report = None
     return jsonify(api.get_state())
 
 @app.route("/api/choice", methods=["POST"])
