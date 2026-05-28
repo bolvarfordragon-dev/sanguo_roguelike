@@ -134,6 +134,67 @@ function scrollToBottom() {
     if (el) el.scrollTop = el.scrollHeight;
 }
 
+// ── Pull-down to next month ───────────────────────────
+let pullTouchStartY = 0;
+let pullTouchStartX = 0;
+let pullTouchMoved = false;
+let isScrolledToBottom = true;
+
+function initPullToRefresh() {
+    const el = document.getElementById('narrative-area');
+    if (!el) return;
+
+    el.addEventListener('touchstart', (e) => {
+        // Only activate when scrolled to bottom
+        isScrolledToBottom = el.scrollHeight - el.scrollTop <= el.clientHeight + 60;
+        pullTouchStartY = e.touches[0].clientY;
+        pullTouchStartX = e.touches[0].clientX;
+        pullTouchMoved = false;
+    }, { passive: true });
+
+    el.addEventListener('touchmove', (e) => {
+        const dy = e.touches[0].clientY - pullTouchStartY;
+        const dx = e.touches[0].clientX - pullTouchStartX;
+        // Detect downward pull (dy > 20, |dx| < dy/2, scrolled to bottom)
+        if (dy > 20 && Math.abs(dx) < dy / 2) {
+            pullTouchMoved = true;
+        }
+    }, { passive: true });
+
+    el.addEventListener('touchend', () => {
+        if (pullTouchMoved && isScrolledToBottom) {
+            // Show a brief "pulling..." indicator
+            showPullHint('↓ 下月推进中...');
+            setTimeout(() => hidePullHint(), 800);
+            doTick();
+        }
+        pullTouchMoved = false;
+    }, { passive: true });
+
+    // Update scroll position tracking
+    el.addEventListener('scroll', () => {
+        isScrolledToBottom = el.scrollHeight - el.scrollTop <= el.clientHeight + 60;
+    }, { passive: true });
+}
+
+function showPullHint(text) {
+    let el = document.getElementById('pull-hint');
+    if (!el) {
+        el = document.createElement('div');
+        el.id = 'pull-hint';
+        el.style.cssText = 'position:fixed;top:0;left:0;right:0;padding:8px;text-align:center;background:rgba(212,160,23,0.9);color:#1a0800;font-size:13px;font-weight:bold;z-index:9999;transform:translateY(-100%);transition:transform 0.2s;font-family:"Noto Serif SC",serif';
+        document.body.appendChild(el);
+    }
+    el.textContent = text;
+    el.style.transform = 'translateY(0)';
+}
+
+function hidePullHint() {
+    const el = document.getElementById('pull-hint');
+    if (el) el.style.transform = 'translateY(-100%)';
+}
+
+
 function addNarrative(text) {
     const area = document.getElementById('narrative-area');
     if (!area || !text) return;
@@ -1279,6 +1340,7 @@ function doShowHistory() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    initPullToRefresh();
     const closeAch = document.getElementById('close-ach-sheet');
     if (closeAch) closeAch.onclick = () => closeBottomSheet('achievements-sheet');
     const closeHist = document.getElementById('close-history-sheet');
