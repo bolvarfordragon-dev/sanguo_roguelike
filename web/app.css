@@ -524,3 +524,26 @@ circle[style*="cursor:pointer"] { cursor: pointer; }
     align-items: center;
     gap: 4px;
 }
+
+/* Achievement toast notification */
+.ach-toast {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: #1a1a0a;
+    border: 1px solid #8a6a14;
+    border-radius: 8px;
+    padding: 12px 18px;
+    font-size: 14px;
+    color: #e8d5a3;
+    z-index: 9999;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.3s, transform 0.3s;
+    pointer-events: none;
+    max-width: 300px;
+}
+.ach-toast.visible {
+    opacity: 1;
+    transform: translateY(0);
+}

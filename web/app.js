@@ -155,6 +155,9 @@ function applyState(state) {
     renderActionPanel(state);
     renderEquipmentPanel(state);
     if (state.narrative) addNarrative(state.narrative);
+    if (state.pending_achievements && state.pending_achievements.length > 0) {
+        state.pending_achievements.forEach(msg => showAchievementToast(msg));
+    }
 }
 
 // ── Run stats bar ─────────────────────────────────
@@ -1031,8 +1034,20 @@ async function doUnequipSlot(slotIndex) {
     applyState(state);
 }
 
-// ── Achievements ──────────────────────────────────────
-async function doShowAchievements() {
+function showAchievementToast(msg) {
+    const existing = document.getElementById('ach-toast');
+    if (existing) existing.remove();
+    const toast = document.createElement('div');
+    toast.id = 'ach-toast';
+    toast.className = 'ach-toast';
+    toast.innerHTML = msg;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.classList.add('visible'), 50);
+    setTimeout(() => {
+        toast.classList.remove('visible');
+        setTimeout(() => toast.remove(), 400);
+    }, 3500);
+}
     const data = await callAPI('GET', '/achievements');
     renderAchievementsPanel(data);
     showScreen('achievements-panel');

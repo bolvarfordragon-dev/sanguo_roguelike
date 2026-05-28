@@ -102,6 +102,7 @@ class SanguoAPI:
                 lines.append(f"\n🎭 {npc.name}（{npc.rank}）正在此处。")
 
         self._add_narrative("\n".join(lines))
+        self.engine._pending_achievement_msgs = []
         return self.get_state()
 
     def _game_over(self):
@@ -263,6 +264,7 @@ class SanguoAPI:
             "map": self._get_map_data(),
             "tavern_npcs": getattr(self, '_tavern_npcs', None),
             "achievements": self._get_achievements_data(),
+            "pending_achievements": [msg for msg in self.engine._pending_achievement_msgs],
             "city_favorability": self.engine.state.city_favorability,
             "run_stats": dict(self.engine.state.run_stats),
             "run_history": self._get_history_data(),
