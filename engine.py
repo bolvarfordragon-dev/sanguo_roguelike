@@ -950,8 +950,11 @@ class SanguoEngine:
         elif p.morale > 85:
             p.morale = max(20, p.morale - 2)
         p.morale = max(0, p.morale)
-        p.food = max(0, p.food - 3)
+        p.food = max(0, p.food - 2)
         p.gold = max(0, p.gold - 1)
+        # 官职月俸
+        salary = config.RANK_SALARY.get(p.rank, 5)
+        p.gold += salary
         if p.food == 0:
             if "饥饿" not in p.effects:
                 p.effects.append("饥饿")
