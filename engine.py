@@ -950,7 +950,7 @@ class SanguoEngine:
         elif p.morale > 85:
             p.morale = max(20, p.morale - 2)
         p.morale = max(0, p.morale)
-        p.food = max(0, p.food - 2)
+        p.food = max(0, p.food - 3)
         p.gold = max(0, p.gold - 1)
         # 官职月俸
         salary = config.RANK_SALARY.get(p.rank, 5)
