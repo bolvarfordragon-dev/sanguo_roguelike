@@ -77,6 +77,7 @@ class SanguoEngine:
         self.pending_intel = None       # intel panel UI data
         self.pending_rank_up = None     # rank-up celebration UI data
         self.pending_monthly_report = None  # monthly financial report UI data
+        self.pending_death_review = None   # pre-death battle history review
         self.active_campaign = None  # 当前进行中的战役
         self.campaign_months_left = 0  # 战役剩余月数
         self.silent = silent
@@ -140,6 +141,7 @@ class SanguoEngine:
         self.state.run_stats["highest_rank"] = config.INITIAL_RANK
         self.state.run_stats["highest_rank_idx"] = 0
         self.state.run_stats["total_exp_earned"] = 0
+        self.state._reset_runtime_state()
         self._print_intro()
 
     def _init_npcs(self):
@@ -310,6 +312,12 @@ class SanguoEngine:
             self._modify_city_favorability(self.state.player.location, config.CITY_FAVORABILITY["battle_win_gain"])
             self.state.run_stats["wins"] = self.state.run_stats.get("wins", 0) + 1
             self.state.run_stats["karma_wins"] = self.state.run_stats.get("karma_wins", 0) + 1
+            # 记录战斗历史
+            self.state.battle_history.append({
+                "year": self.state.year, "month": self.state.month,
+                "enemy": enemy.name, "result": "win",
+                "exp_gain": exp_gain, "gold": gold_loot, "food": food_loot,
+            })
             # 战斗质量bonus：打赢比自己强 → 武业力额外奖励
             player_wu = self.state.player.get_stat("武")
             enemy_wu = enemy.get_stat("武")
@@ -332,7 +340,11 @@ class SanguoEngine:
             if session.attacker_damage > session.defender_damage * 2:
                 self.state.player.take_damage(random.randint(10, 30))
             narrative = session.get_full_narrative()
-
+            self.state.battle_history.append({
+                "year": self.state.year, "month": self.state.month,
+                "enemy": enemy.name, "result": "loss",
+                "exp_gain": 0, "gold": 0, "food": 0,
+            })
         self.state.run_stats["battles_this_run"] = self.state.run_stats.get("battles_this_run", 0) + 1
         self.pending_combat = None
         return narrative
@@ -629,6 +641,7 @@ class SanguoEngine:
         mandatory_result = trigger_mandatory_event(self.state, year, month)
         if mandatory_result:
             self.state.run_stats["karma_history_events"] = self.state.run_stats.get("karma_history_events", 0) + 1
+            self.state.history_log.append({"year": year, "month": month, "name": mandatory_result["name"], "type": "mandatory"})
 
         # 检查条件事件
         conditional_results = []
@@ -637,6 +650,7 @@ class SanguoEngine:
             if r:
                 conditional_results.append(r)
                 self.state.run_stats["karma_history_events"] = self.state.run_stats.get("karma_history_events", 0) + 1
+                self.state.history_log.append({"year": year, "month": month, "name": r.get("name", "未知事件"), "type": "conditional"})
 
         # 检查特殊事件
         for evt in [taoyuan_oath_event(), huarong_road_event(), three_visits_to_zhuge_event()]:

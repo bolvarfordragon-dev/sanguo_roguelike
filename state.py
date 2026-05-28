@@ -40,6 +40,11 @@ class GameState:
         # 城市好感度 {city_name: 0-100, neutral=50}
         self.city_favorability = {}
 
+    def _reset_runtime_state(self):
+        """Reset per-run data structures called by new_game()"""
+        self.battle_history = []
+        self.history_log = []
+
     def tick(self):
         """推进一个月"""
         self.month += 1

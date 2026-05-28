@@ -290,6 +290,7 @@ class SanguoAPI:
             "pending_intel": getattr(self.engine, 'pending_intel', None),
             "pending_rank_up": getattr(self.engine, 'pending_rank_up', None),
             "pending_monthly_report": getattr(self.engine, 'pending_monthly_report', None),
+            "pending_death_review": self._get_death_review_data(),
             "pending_campaign": self._get_pending_campaign(),
             "pending_choice": self._get_pending_choice(),
         }
@@ -389,6 +390,17 @@ class SanguoAPI:
                 "highest_rank": rs.get("highest_rank", p.rank),
                 "exp_earned": rs.get("total_exp_earned", 0),
             }
+        }
+
+    def _get_death_review_data(self):
+        """Return battle history + history log for death review panel."""
+        if not hasattr(self.engine.state, 'battle_history'):
+            return None
+        battles = self.engine.state.battle_history[-20:]
+        events = self.engine.state.history_log[-20:]
+        return {
+            "battles": battles,
+            "events": events,
         }
 
     def _get_history_data(self):

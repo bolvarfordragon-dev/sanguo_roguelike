@@ -607,57 +607,52 @@ function doShowHistory() {
     const rs = state.run_history || {};
     const records = rs.records || [];
     const total = rs.total_runs || 0;
+    const review = currentState.pending_death_review || {};
+    const battles = review.battles || [];
+    const events = review.events || [];
 
     const overlay = document.createElement('div');
     overlay.id = 'history-overlay';
-    overlay.style.cssText = `
-        position:fixed;top:0;left:0;right:0;bottom:0;
-        background:rgba(0,0,0,0.85);z-index:900;
-        display:flex;align-items:center;justify-content:center;
-        padding:16px;
-    `;
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.85);z-index:900;display:flex;align-items:center;justify-content:center;padding:16px;';
     overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
 
-    let contentHtml = '';
-    if (records.length === 0) {
-        contentHtml = '<div style="text-align:center;color:#888;padding:30px">尚无历史记录</div>';
-    } else {
-        contentHtml = `<div class="history-list">`;
-        records.forEach(r => {
-            if (r.type === 'death_record') {
-                contentHtml += `
-                    <div class="history-item death">
-                        <div class="history-year">${r.year || '?'}年${r.month || '?'}月</div>
-                        <div class="history-rank">${r.player_rank || '散兵'}</div>
-                        <div class="history-name">${r.player_name || '???'}</div>
-                        <div class="history-cause">${r.death_cause || '陨落'}</div>
-                        <div class="history-exp">经验 ${r.exp || 0}</div>
-                    </div>
-                `;
-            } else {
-                contentHtml += `<div class="history-item">${JSON.stringify(r)}</div>`;
-            }
-        });
-        contentHtml += '</div>';
+    let battlesHtml = '<div style="text-align:center;color:#556;font-size:13px;padding:10px">尚无战斗记录</div>';
+    if (battles.length > 0) {
+        battlesHtml = battles.slice().reverse().map(b => {
+            const r = b.result === 'win' ? '胜' : '负';
+            const loot = b.result === 'win' ? `+${b.exp_gain}经验 +${b.gold}金 +${b.food}粮` : '';
+            return `<div class="history-item ${b.result}"><span class="battle-time">${b.year}年${b.month}月</span><span style="font-weight:bold;color:${b.result==='win'?'#2ecc71':'#e74c3c'}">${r}</span><span style="flex:1;text-align:center">${b.enemy}</span>${loot ? `<span style="font-size:12px;color:#8a6a14">${loot}</span>` : ''}</div>`;
+        }).join('');
+    }
+
+    let eventsHtml = '<div style="text-align:center;color:#556;font-size:13px;padding:10px">尚无历史事件</div>';
+    if (events.length > 0) {
+        eventsHtml = events.slice().reverse().map(ev => {
+            return `<div class="history-item"><span class="battle-time">${ev.year}年${ev.month}月</span><span style="color:#d4a017">★</span><span style="flex:1;text-align:center;color:#c8d8f0">${ev.name}</span><span style="font-size:11px;color:#556">${ev.type === 'mandatory' ? '必然' : '条件'}</span></div>`;
+        }).join('');
+    }
+
+    let recordsHtml = '<div style="text-align:center;color:#556;font-size:13px;padding:10px">尚无历史记录</div>';
+    if (records.length > 0) {
+        recordsHtml = records.map(r => `<div class="history-item death"><div style="display:flex;gap:8px;align-items:center"><span style="color:#d4a017">⚰</span><span>${r.year||'?'}年${r.month||'?'}月</span><span>${r.player_name||'???'}</span><span style="color:#8a6a14">${r.player_rank||'散兵'}</span></div><div style="font-size:12px;color:#888">${r.death_cause||'陨落'} | 经验 ${r.exp||0}</div></div>`).join('');
     }
 
     overlay.innerHTML = `
-        <div style="
-            background:#1a1a2e;color:#eee;
-            border-radius:16px;padding:20px;max-width:400px;width:100%;
-            max-height:80vh;overflow-y:auto;
-            font-family:'Noto Serif SC',serif;
-        ">
+        <div style="background:#1a1a2e;color:#eee;border-radius:16px;padding:20px;max-width:420px;width:100%;max-height:85vh;overflow-y:auto;font-family:'Noto Serif SC',serif;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-                <span style="font-size:18px;font-weight:700">📜 战报史籍</span>
+                <span style="font-size:18px;font-weight:700">📜 本局战报</span>
                 <span style="font-size:12px;color:#888">共${total}局</span>
             </div>
-            ${contentHtml}
-            <button onclick="this.closest('#history-overlay').remove()"
-                style="width:100%;margin-top:14px;padding:10px;background:#333;color:#aaa;
-                       border:none;border-radius:8px;cursor:pointer;font-size:14px">
-                关闭
-            </button>
+            <div class="history-section">
+                <div class="history-section-title">⚔️ 战斗记录</div>
+                ${battlesHtml}
+            </div>
+            <div class="history-section">
+                <div class="history-section-title">★ 历史事件</div>
+                ${eventsHtml}
+            </div>
+            ${records.length > 0 ? `<div class="history-section"><div class="history-section-title">📖 往局回顾</div>${recordsHtml}</div>` : ''}
+            <button onclick="this.closest('#history-overlay').remove()" style="width:100%;margin-top:14px;padding:10px;background:#333;color:#aaa;border:none;border-radius:8px;cursor:pointer;font-size:14px">关闭</button>
         </div>
     `;
     document.body.appendChild(overlay);
