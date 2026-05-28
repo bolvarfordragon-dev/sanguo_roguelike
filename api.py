@@ -105,12 +105,16 @@ class SanguoAPI:
         return self.get_state()
 
     def _game_over(self):
-        """Handle game over state."""
+        """Handle game over state: build death shop data and set ui_state=death."""
         p = self.engine.state.player
+        cause = "陨落" if p.hp <= 0 else "三国鼎立"
         if p.hp <= 0:
             self._add_narrative(f"\n💀 你已陨于乱世。存活：{self.engine.state.get_time_str()}")
         else:
             self._add_narrative(f"\n🏯 三国鼎立，乱世收场。你的故事止于{self.engine.state.get_time_str()}。")
+
+        # Build death shop data
+        self.engine.pending_death_shop = self._build_death_shop_data()
         return self.get_state()
 
     def get_state(self):
@@ -214,6 +218,9 @@ class SanguoAPI:
         elif self.engine.pending_market:
             ui_state = "market"
 
+        elif self.engine.pending_death_shop:
+            ui_state = "death_shop"
+
         # Available moves
         current = p.location
         adj = get_adjacent_cities(current)
@@ -257,6 +264,7 @@ class SanguoAPI:
             "run_stats": dict(self.engine.state.run_stats),
             "run_history": self._get_history_data(),
             "pending_equipment": self._get_pending_equipment(),
+            "pending_death_shop": self.engine.pending_death_shop or None,
         }
 
     def _get_pending_campaign(self):
@@ -311,6 +319,49 @@ class SanguoAPI:
                 }
                 for ach in ACHIEVEMENTS
             ],
+        }
+
+    def _build_death_shop_data(self):
+        """Build death shop data: available skills and player fragments."""
+        from skills import SKILLS, can_learn_skill
+        p = self.engine.state.player
+        months = self.engine.state.get_elapsed_months()
+        rs = self.engine.state.run_stats
+        fragments_earned = 5 + ((months + 5) // 6)
+        p.inheritance_fragments += fragments_earned
+
+        active = []
+        passive = []
+        for sid, sk in SKILLS.items():
+            if sk.cost == 0:
+                continue
+            can_learn, reason = can_learn_skill(sid, p)
+            entry = {
+                "id": sid,
+                "name": sk.name,
+                "type": sk.skill_type,
+                "cost": sk.cost,
+                "desc": sk.desc,
+                "can_learn": can_learn,
+                "fail_reason": reason if not can_learn else None,
+            }
+            if sk.skill_type == "active":
+                active.append(entry)
+            else:
+                passive.append(entry)
+
+        return {
+            "fragments_balance": p.inheritance_fragments,
+            "fragments_earned": fragments_earned,
+            "active_skills": active,
+            "passive_skills": passive,
+            "death_summary": {
+                "months": months,
+                "battles": rs.get("battles_this_run", 0),
+                "npcs_recruited": len(rs.get("npcs_recruited_this_run", [])),
+                "highest_rank": rs.get("highest_rank", p.rank),
+                "exp_earned": rs.get("total_exp_earned", 0),
+            }
         }
 
     def _get_history_data(self):
@@ -502,6 +553,41 @@ class SanguoAPI:
         self._add_narrative(output)
         return self.get_state()
 
+    def buy_skill(self, skill_id):
+        """Purchase a skill from death shop."""
+        from skills import get_skill, can_learn_skill
+        if not self.engine.state or not self.engine.state.player:
+            return self.get_state()
+        p = self.engine.state.player
+        shop = self.engine.pending_death_shop
+        if not shop:
+            return self.get_state()
+
+        skill = get_skill(skill_id)
+        if not skill:
+            return self.get_state()
+        if skill.cost == 0:
+            return self.get_state()
+
+        can_learn, _ = can_learn_skill(skill_id, p)
+        if not can_learn:
+            return self.get_state()
+        if p.inheritance_fragments < skill.cost:
+            return self.get_state()
+
+        p.inheritance_fragments -= skill.cost
+        p.add_skill(skill_id)
+        self._add_narrative(f"✅ 习得技能：{skill.name}！剩余碎片：{p.inheritance_fragments}枚")
+        return self.get_state()
+
+    def reincarnate(self):
+        """Start a new life (reincarnate)."""
+        self.engine.pending_death_shop = None
+        self.engine.new_game()
+        self._history = []
+        self._add_narrative("\n🌟 新的命运开始...")
+        return self.get_state()
+
     def show_status(self):
         """Show player status."""
         old_stdout = sys.stdout
@@ -574,6 +660,16 @@ def game_map():
 @app.route("/api/status", methods=["POST"])
 def status():
     return jsonify(api.show_status())
+
+@app.route("/api/buy_skill", methods=["POST"])
+def buy_skill():
+    data = request.json or {}
+    skill_id = data.get("skill_id", "")
+    return jsonify(api.buy_skill(skill_id))
+
+@app.route("/api/reincarnate", methods=["POST"])
+def reincarnate():
+    return jsonify(api.reincarnate())
 
 @app.route("/api/enter_market", methods=["POST"])
 def enter_market():

@@ -202,6 +202,7 @@ function renderActionPanel(state) {
     else if (ui === 'npc') renderNpc(state, panel);
     else if (ui === 'market') renderMarket(state, panel);
     else if (ui === 'tavern_choice') renderTavernChoice(state, panel);
+    else if (ui === 'death_shop') renderDeathShop(state, panel);
     else renderNormal(state, panel);
 }
 
@@ -427,16 +428,71 @@ function renderMarket(state, panel) {
     `;
 }
 
-function renderTavernChoice(state, panel) {
-    const npcs = state.tavern_npcs || [];
-    let html = '<div class="tavern-info">🍶 酒馆中有数人，请选择拜访：</div>';
-    html += '<div class="action-row" style="flex-direction:column;gap:6px">';
-    npcs.forEach(npc => {
-        html += `<button class="action-btn" onclick="doTavernChoice('${npc.id}')">${npc.name}（${npc.rank}）</button>`;
-    });
-    html += '</div>';
-    html += '<div class="action-row" style="margin-top:6px"><button class="action-btn" onclick="doTavernCancel()">← 离开酒馆</button></div>';
-    panel.innerHTML = html;
+function renderDeathShop(state, panel) {
+    const shop = state.pending_death_shop;
+    if (!shop) { renderNormal(state, panel); return; }
+    const summary = shop.death_summary;
+    const years = Math.floor(summary.months / 12);
+    const months = summary.months % 12;
+    panel.innerHTML = `
+        <div class="death-shop-header">
+            <div class="death-title">💀 陨于乱世</div>
+            <div class="death-summary">
+                存活：<b>${years}年${months}月</b> | 战斗：<b>${summary.battles}次</b> | 招募：<b>${summary.npcs_recruited}人</b><br>
+                最高官职：<b>${summary.highest_rank}</b> | 获得经验：<b>${summary.exp_earned}</b>
+            </div>
+        </div>
+        <div class="death-fragments">
+            🎁 本局获得传承碎片：<b style="color:#d4a017">+${shop.fragments_earned}枚</b><br>
+            💎 当前碎片余额：<b style="color:#d4a017">${shop.fragments_balance}枚</b>
+        </div>
+        <div class="death-section-title">⚔️ 传承主动技能</div>
+        <div class="death-skills">
+            ${shop.active_skills.map(sk => `
+                <div class="death-skill ${sk.can_learn ? 'available' : 'locked'}">
+                    <div class="death-skill-header">
+                        <span class="death-skill-name">${sk.name}</span>
+                        <span class="death-skill-cost">💠${sk.cost}碎片</span>
+                    </div>
+                    <div class="death-skill-desc">${sk.desc}</div>
+                    ${sk.can_learn
+                        ? `<button class="death-buy-btn" onclick="doBuySkill('${sk.id}')">购买</button>`
+                        : `<div class="death-skill-locked">${sk.fail_reason || '暂不可学习'}</div>`
+                    }
+                </div>`).join('')}
+        </div>
+        <div class="death-section-title">🛡️ 传承被动技能</div>
+        <div class="death-skills">
+            ${shop.passive_skills.map(sk => `
+                <div class="death-skill ${sk.can_learn ? 'available' : 'locked'}">
+                    <div class="death-skill-header">
+                        <span class="death-skill-name">${sk.name}</span>
+                        <span class="death-skill-cost">💠${sk.cost}碎片</span>
+                    </div>
+                    <div class="death-skill-desc">${sk.desc}</div>
+                    ${sk.can_learn
+                        ? `<button class="death-buy-btn" onclick="doBuySkill('${sk.id}')">购买</button>`
+                        : `<div class="death-skill-locked">${sk.fail_reason || '暂不可学习'}</div>`
+                    }
+                </div>`).join('')}
+        </div>
+        <div class="action-row" style="margin-top:14px">
+            <button class="action-btn primary" onclick="doReincarnate()">🌟 转世重来</button>
+        </div>
+    `;
+}
+
+async function doBuySkill(skillId) {
+    const state = await apiBuySkill(skillId);
+    if (!state || state.game_status === 'error') return;
+    applyState(state);
+}
+
+async function doReincarnate() {
+    const state = await apiReincarnate();
+    if (!state || state.game_status === 'error') return;
+    clearNarrative();
+    applyState(state);
 }
 
 function renderNormal(state, panel) {
@@ -873,6 +929,14 @@ async function doTavernCancel() {
     const state = await apiTavernChoice(0);
     if (!state || state.game_status === 'error') return;
     applyState(state);
+}
+
+async function apiBuySkill(skillId) {
+    return callAPI('POST', '/buy_skill', { skill_id: skillId });
+}
+
+async function apiReincarnate() {
+    return callAPI('POST', '/reincarnate');
 }
 
 async function doShowMap() {
