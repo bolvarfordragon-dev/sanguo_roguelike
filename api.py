@@ -463,12 +463,17 @@ class SanguoAPI:
                 region = reg
                 break
         adj = get_adjacent_cities(current)
+        visited = self.engine.state.visited_cities or []
+        total_cities = sum(len(data["cities"]) for data in REGIONS.values())
         return {
             "current": current,
             "region": region,
             "regions": {reg: {"name": data["name"], "cities": data["cities"]} for reg, data in REGIONS.items()},
             "adjacent_cities": adj,
             "connections": CITY_CONNECTIONS,
+            "visited_cities": visited,
+            "total_cities": total_cities,
+            "explore_pct": round(len(visited) / total_cities * 100) if total_cities > 0 else 0,
         }
 
     def move_to(self, target):

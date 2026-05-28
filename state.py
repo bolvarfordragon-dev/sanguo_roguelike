@@ -39,6 +39,8 @@ class GameState:
         }
         # 城市好感度 {city_name: 0-100, neutral=50}
         self.city_favorability = {}
+        # 已访问城市列表（用于探索进度）
+        self.visited_cities = []
 
     def _reset_runtime_state(self):
         """Reset per-run data structures called by new_game()"""

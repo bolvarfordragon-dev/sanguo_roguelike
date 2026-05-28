@@ -925,6 +925,21 @@ function renderMapView(state, panel) {
     });
 
     let html = '';
+    // Exploration progress
+    const visited = map.visited_cities || [];
+    const total = map.total_cities || 1;
+    const pct = map.explore_pct || 0;
+    html += `<div style="padding:6px 4px;background:#0f1a0f;border-radius:6px;border:1px solid #2e8b57;margin-bottom:8px">
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:#88cc88;margin-bottom:4px">
+            <span>📍 探索进度</span>
+            <span>${visited.length}/${total} 城</span>
+        </div>
+        <div style="height:6px;background:#1a2a1a;border-radius:3px;overflow:hidden">
+            <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#2e8b57,#66cc88);border-radius:3px;transition:width 0.4s"></div>
+        </div>
+        <div style="text-align:center;font-size:11px;color:#9a7620;margin-top:2px">${pct}% 已探索</div>
+    </div>`;
+
     // SVG Map
     html += `<div style="overflow-x:auto;overflow-y:hidden;padding:8px 0">
         <svg width="${svgW + 20}" height="${svgH + 20}" style="display:block;margin:0 auto;max-width:100%">
@@ -999,7 +1014,18 @@ function renderFullMap(state, panel) {
         return '#9a7620';
     }
 
-    let html = '<div style="padding:4px;font-size:12px;color:#9a7620;margin-bottom:8px">📍 全州地图 · 点击相邻城市移动</div>';
+    const visited = map.visited_cities || [];
+    const total = map.total_cities || 1;
+    const pct = map.explore_pct || 0;
+    html += `<div style="margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:#88cc88;margin-bottom:4px">
+            <span>📍 探索进度</span><span>${visited.length}/${total} 城</span>
+        </div>
+        <div style="height:6px;background:#1a2a1a;border-radius:3px;overflow:hidden">
+            <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#2e8b57,#66cc88);border-radius:3px"></div>
+        </div>
+    </div>`;
+    html += '<div style="padding:4px;font-size:12px;color:#9a7620;margin-bottom:8px">📍 全州地图 · 点击相邻城市移动</div>';
     html += '<div class="map-full-grid">';
     Object.entries(map.regions).forEach(([regKey, regData]) => {
         const isCurrentRegion = regData.cities.includes(current);
@@ -1010,14 +1036,16 @@ function renderFullMap(state, panel) {
         regData.cities.forEach(city => {
             const isAdj = adjacent.includes(city);
             const isCurr = city === current;
+            const isVisited = visited.includes(city);
             const fav = cf[city] || 50;
             const favColor = getFavColor(city);
-            const cls = isCurr ? 'map-city-btn current' : (isAdj ? 'map-city-btn adjacent' : 'map-city-btn other-city');
-            const icon = isCurr ? '★' : (isAdj ? '→' : '·');
+            const cls = isCurr ? 'map-city-btn current' : (isAdj ? 'map-city-btn adjacent' : (isVisited ? 'map-city-btn other-city' : 'map-city-btn other-city'));
+            const icon = isCurr ? '★' : (isVisited ? '●' : '○');
+            const cityStyle = isVisited ? '' : 'color:#444';
             if (isAdj) {
-                html += `<button class="${cls}" onclick="doMove('${city}')">${icon} ${city} <span style="font-size:9px;color:${favColor}">❤${fav}</span></button>`;
+                html += `<button class="${cls}" onclick="doMove('${city}')" style="${cityStyle}">${icon} ${city} <span style="font-size:9px;color:${favColor}">❤${fav}</span></button>`;
             } else {
-                html += `<button class="${cls}" disabled>${icon} ${city}</button>`;
+                html += `<button class="${cls}" disabled style="${cityStyle}">${icon} ${city}</button>`;
             }
         });
         html += '</div></div>';

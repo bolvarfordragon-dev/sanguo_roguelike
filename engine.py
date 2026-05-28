@@ -131,6 +131,7 @@ class SanguoEngine:
 
         player._engine_ref = self  # 供 Character.check_level_up 更新最高官职
         self.state.set_player(player)
+        self.state.visited_cities = [player.location]  # Track explored cities
         self._init_npcs()
         self.running = True
         # 同步转世数据到本局状态（成就系统使用）
@@ -478,6 +479,10 @@ class SanguoEngine:
         self.state.player.gold -= cost
         travel_text = travel_narrative(current, target_city)
         self.state.player.location = target_city
+
+        # Track visited cities for exploration progress
+        if target_city not in self.state.visited_cities:
+            self.state.visited_cities.append(target_city)
 
         # 时间推进
         self.state.advance_time(move_info["time"])
