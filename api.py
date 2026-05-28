@@ -293,23 +293,62 @@ class SanguoAPI:
             "pending_monthly_report": getattr(self.engine, 'pending_monthly_report', None),
             "pending_death_review": self._get_death_review_data(),
             "pending_campaign": self._get_pending_campaign(),
+            "active_campaign": self._get_active_campaign_data(),
             "pending_choice": self._get_pending_choice(),
+            "next_event_preview": self._get_next_event_preview(),
         }
 
-    def _get_pending_campaign(self):
-        """Return pending campaign data if any."""
-        if not self.engine.pending_campaign:
+    def _get_active_campaign_data(self):
+        """Return active campaign remaining months if any."""
+        c = self.engine.active_campaign
+        if not c:
             return None
-        c = self.engine.pending_campaign
         return {
             "id": c.id,
             "name": c.name,
-            "description": c.description,
+            "months_remaining": getattr(c, 'months_remaining', c.duration),
             "duration": c.duration,
-            "rewards": c.rewards,
-            "side_choice": c.side_choice,
-            "combat_intro": c.combat_intro,
         }
+
+    def _get_next_event_preview(self):
+        """Preview of upcoming events: NPC arrivals, campaign triggers, etc."""
+        previews = []
+        state = self.engine.state
+        year = state.year
+        month = state.month
+
+        # Compute next month
+        next_month = month + 1
+        next_year = year
+        if next_month > 12:
+            next_month = 1
+            next_year += 1
+
+        # Check upcoming NPC arrivals in the next 2 months
+        try:
+            from npc_schedule import get_upcoming_npcs
+            upcoming = get_upcoming_npcs(next_year, next_month, lookahead=2)
+            for npc_info in upcoming[:3]:
+                previews.append({
+                    "type": "npc",
+                    "label": f"📍 {npc_info['location']} 将有 NPC 出现",
+                    "icon": npc_info.get('icon', '🎭'),
+                    "month": f"{npc_info['year']}年{npc_info['month']}月",
+                })
+        except Exception:
+            pass
+
+        # Active campaign countdown
+        if self.engine.active_campaign:
+            c = self.engine.active_campaign
+            remaining = getattr(c, 'months_remaining', 0) or c.duration
+            previews.append({
+                "type": "campaign",
+                "label": f"⚔️ 战役「{c.name}」进行中",
+                "month": f"还剩 {remaining} 月",
+            })
+
+        return previews if previews else None
 
     def _get_pending_choice(self):
         """Return pending choice event data if any."""

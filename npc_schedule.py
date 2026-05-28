@@ -482,6 +482,60 @@ def get_all_active_npcs(year):
     return npcs
 
 
+def get_upcoming_npcs(year, month, lookahead=2):
+    """返回未来 lookahead 个月内将有变化的 NPC（location change within window）。"""
+    results = []
+    for npc_name in NPC_SCHEDULE:
+        if not is_npc_active(npc_name, year):
+            continue
+        schedule = NPC_SCHEDULE[npc_name].get("timeline", [])
+        for entry in schedule:
+            start_yr, end_yr = entry["years"]
+            # Find when this NPC changes location in the lookahead window
+            if start_yr > year or end_yr < year:
+                continue
+            # Check if the entry starts within the next `lookahead` months
+            if year <= start_yr <= year + (lookahead // 12) and (start_yr - year) * 12 + (1 - month) <= lookahead:
+                if start_yr == year and start_yr == year:
+                    # Same year check
+                    pass
+            # Simpler: just check entries where start year is within [year, year+1]
+            # and the next location is different from current location at month
+            current_loc = get_npc_location(npc_name, year)
+            # Next time the NPC changes location after (year, month)
+            for check_yr in range(year, year + 2):
+                for check_mo in range(1, 13):
+                    if check_yr == year and check_mo <= month:
+                        continue
+                    loc = get_npc_location(npc_name, check_yr * 100 + check_mo)
+                    # The function get_npc_location takes year only, so check year then
+                    pass
+    # Simpler approach: find all NPCs whose timeline entry starts within lookahead
+    for npc_name in NPC_SCHEDULE:
+        if not is_npc_active(npc_name, year):
+            continue
+        schedule = NPC_SCHEDULE[npc_name].get("timeline", [])
+        current_loc = get_npc_location(npc_name, year)
+        for entry in schedule:
+            start_yr, end_yr = entry["years"]
+            if start_yr < year or end_yr < year:
+                continue
+            # Distance in months from now
+            dist = (start_yr - year) * 12 - month
+            if 0 < dist <= lookahead * 30:  # ~lookahead months lookahead
+                new_loc = entry.get("location", "?")
+                if new_loc != current_loc:
+                    results.append({
+                        "name": npc_name,
+                        "location": new_loc,
+                        "year": start_yr,
+                        "month": 1,
+                        "icon": "🎭",
+                    })
+    results.sort(key=lambda x: x["year"] * 100 + x["month"])
+    return results[:3]
+
+
 if __name__ == "__main__":
     # 简单测试
     print(f"关羽在184年位于: {get_npc_location('关羽', 184)}")

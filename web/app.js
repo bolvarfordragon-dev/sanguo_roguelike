@@ -271,6 +271,7 @@ function applyState(state) {
     currentState = state;
     updateStats(state);
     renderRunStats(state);
+    renderEventPreview(state);
     renderActionPanel(state);
     renderEquipmentPanel(state);
     if (state.narrative) addNarrative(state.narrative);
@@ -283,6 +284,20 @@ function applyState(state) {
     if (state.pending_monthly_report) {
         showMonthlyReport(state.pending_monthly_report);
     }
+}
+
+function renderEventPreview(state) {
+    const el = document.getElementById('event-preview');
+    if (!el) return;
+    const previews = state.next_event_preview;
+    if (!previews || previews.length === 0) {
+        el.style.display = 'none';
+        return;
+    }
+    el.style.display = 'flex';
+    el.innerHTML = previews.map(p => `
+        <span style="color:${p.type === 'campaign' ? '#ff6666' : '#9a9abb'}">${p.label}</span>
+    `).join('');
 }
 
 // ── Run stats bar ─────────────────────────────────
