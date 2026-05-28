@@ -272,7 +272,7 @@ class SanguoEngine:
 
             # 战利品：敌人遗落的资源
             gold_loot = random.randint(8, 25)
-            food_loot = random.randint(8, 30)
+            food_loot = random.randint(15, 45)
             self.state.player.gold += gold_loot
             self.state.player.food += food_loot
 
