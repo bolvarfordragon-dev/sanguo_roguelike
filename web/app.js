@@ -162,6 +162,9 @@ function applyState(state) {
     if (state.pending_achievements && state.pending_achievements.length > 0) {
         state.pending_achievements.forEach(msg => showAchievementToast(msg));
     }
+    if (state.pending_rank_up) {
+        showRankUpToast(state.pending_rank_up);
+    }
 }
 
 // ── Run stats bar ─────────────────────────────────
@@ -1089,6 +1092,30 @@ function showAchievementToast(msg) {
         toast.classList.remove('visible');
         setTimeout(() => toast.remove(), 400);
     }, 3500);
+}
+
+function showRankUpToast(data) {
+    const { old_rank, new_rank } = data;
+    const existing = document.getElementById('rankup-toast');
+    if (existing) existing.remove();
+    const toast = document.createElement('div');
+    toast.id = 'rankup-toast';
+    toast.className = 'rankup-toast';
+    toast.innerHTML = `
+        <div class="rankup-title">🎖️ 晋升！</div>
+        <div class="rankup-ranks">${old_rank} → <span class="rankup-new">${new_rank}</span></div>
+        <div class="rankup-desc">前途光明，继续努力！</div>
+        <button class="action-btn primary" onclick="dismissRankUp()">确定</button>
+    `;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.classList.add('visible'), 50);
+}
+
+
+async function dismissRankUp() {
+    const existing = document.getElementById('rankup-toast');
+    if (existing) existing.remove();
+    await callAPI('POST', '/rank_up_dismiss', {});
 }
     const data = await callAPI('GET', '/achievements');
     renderAchievementsPanel(data);

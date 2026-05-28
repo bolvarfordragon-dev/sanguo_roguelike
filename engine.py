@@ -75,6 +75,7 @@ class SanguoEngine:
         self.pending_equipment = None  # 待处理的装备掉落替换
         self.pending_death_shop = None  # death shop UI data
         self.pending_intel = None       # intel panel UI data
+        self.pending_rank_up = None     # rank-up celebration UI data
         self.active_campaign = None  # 当前进行中的战役
         self.campaign_months_left = 0  # 战役剩余月数
         self.silent = silent
@@ -572,6 +573,13 @@ class SanguoEngine:
             return
         # Double food consumption during campaign
         self.state.player.food = max(0, self.state.player.food - 3)
+
+    def _on_rank_up(self, old_rank, new_rank):
+        """Called by Character.check_level_up when player is promoted."""
+        self.pending_rank_up = {
+            "old_rank": old_rank,
+            "new_rank": new_rank,
+        }
 
 
     def tick(self):

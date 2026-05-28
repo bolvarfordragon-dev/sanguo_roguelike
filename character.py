@@ -128,6 +128,8 @@ class Character:
                 if new_idx > old_idx:
                     rs["highest_rank_idx"] = new_idx
                     rs["highest_rank"] = next_rank
+                # 触发升级事件（供 engine 设置 pending_rank_up）
+                self._engine_ref._on_rank_up(old_rank, next_rank)
             return True
         return False
 

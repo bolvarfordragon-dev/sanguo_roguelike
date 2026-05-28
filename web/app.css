@@ -561,3 +561,47 @@ circle[style*="cursor:pointer"] { cursor: pointer; }
     opacity: 1;
     transform: translateY(0);
 }
+
+/* Rank-up celebration toast */
+.rankup-toast {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.8);
+    background: linear-gradient(135deg, #1a1200 0%, #2a1a00 100%);
+    border: 2px solid #d4a017;
+    border-radius: 12px;
+    padding: 24px 32px;
+    font-size: 16px;
+    color: #e8d5a3;
+    z-index: 9999;
+    opacity: 0;
+    transition: opacity 0.3s, transform 0.3s;
+    text-align: center;
+    min-width: 260px;
+    box-shadow: 0 0 40px rgba(212,160,23,0.3);
+}
+.rankup-toast.visible {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+}
+.rankup-title {
+    font-size: 22px;
+    font-weight: bold;
+    color: #d4a017;
+    margin-bottom: 8px;
+}
+.rankup-ranks {
+    font-size: 18px;
+    margin: 8px 0;
+    color: #c4b483;
+}
+.rankup-new {
+    color: #f0c040;
+    font-weight: bold;
+}
+.rankup-desc {
+    font-size: 13px;
+    color: #8a7840;
+    margin-bottom: 16px;
+}
