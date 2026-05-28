@@ -1305,6 +1305,142 @@ async function dismissMonthlyReport() {
     await callAPI('POST', '/monthly_report_dismiss', {});
 }
 // ── Bottom Sheet helpers ─────────────────────────────
+const TUTORIAL_KEY = 'sanguo_tutorial_v1';
+
+function getTutorialStep() {
+    try { return parseInt(localStorage.getItem(TUTORIAL_KEY) || '0', 10); } catch(e) { return 0; }
+}
+function setTutorialStep(step) {
+    try { localStorage.setItem(TUTORIAL_KEY, String(step)); } catch(e) {}
+}
+function completeTutorial() {
+    try { localStorage.setItem(TUTORIAL_KEY, '99'); } catch(e) {}
+}
+
+// Tutorial steps: each has a selector target, message, and optional icon
+const TUTORIAL_STEPS = [
+    {
+        target: '#btn-next-month',
+        icon: '⏭️',
+        message: '点击「下月」推进时间，每月消耗粮草。',
+        position: 'top',
+    },
+    {
+        target: '.nav-btn:nth-child(1)',
+        icon: '📍',
+        message: '从这里打开地图，查看相邻城市和移动。',
+        position: 'top',
+    },
+    {
+        target: '.main-stats',
+        icon: '📊',
+        message: '你的属性（武/智/名/魅/运）决定一切决策的成败。',
+        position: 'bottom',
+    },
+    {
+        target: '.action-panel',
+        icon: '🏪',
+        message: '市集/酒馆/情报是你在乱世的生存之道。',
+        position: 'top',
+    },
+    {
+        target: '.bottom-nav',
+        icon: '🏆',
+        message: '查看成就和战报，回顾你的英雄历程。',
+        position: 'top',
+    },
+];
+
+let tutorialOverlay = null;
+let currentTutorialStep = 0;
+
+function showTutorialStep(step) {
+    // Remove existing
+    if (tutorialOverlay) tutorialOverlay.remove();
+    if (step >= TUTORIAL_STEPS.length) {
+        completeTutorial();
+        return;
+    }
+    const s = TUTORIAL_STEPS[step];
+    const targetEl = document.querySelector(s.target);
+    if (!targetEl) {
+        // Skip this step if element not visible
+        showTutorialStep(step + 1);
+        return;
+    }
+
+    const rect = targetEl.getBoundingClientRect();
+    tutorialOverlay = document.createElement('div');
+    tutorialOverlay.id = 'tutorial-overlay';
+    tutorialOverlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9990;pointer-events:none;';
+
+    // Darken everything except target
+    const darkDiv = document.createElement('div');
+    darkDiv.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.65);';
+    tutorialOverlay.appendChild(darkDiv);
+
+    // Spotlight: cut out the target element
+    const spotSize = 12;
+    const spot = document.createElement('div');
+    const spotlight = `rect(${rect.top - spotSize}px, ${rect.right + spotSize}px, ${rect.bottom + spotSize}px, ${rect.left - spotSize}px)`;
+    darkDiv.style.clipPath = `polygon(0 0, 100% 0, 100% 100%, 0 100%, 0 0, ${rect.left - spotSize}px ${rect.top - spotSize}px, ${rect.right + spotSize}px ${rect.top - spotSize}px, ${rect.right + spotSize}px ${rect.bottom + spotSize}px, ${rect.left - spotSize}px ${rect.bottom + spotSize}px, ${rect.left - spotSize}px ${rect.top - spotSize}px)`;
+
+    // Bubble
+    const bubble = document.createElement('div');
+    bubble.style.cssText = `
+        position: fixed;
+        background: #1a1208;
+        border: 1px solid #d4a017;
+        border-radius: 10px;
+        padding: 12px 16px;
+        max-width: 260px;
+        font-size: 13px;
+        color: #e8d5a3;
+        z-index: 9991;
+        font-family: 'Noto Serif SC', serif;
+        line-height: 1.5;
+        pointer-events: all;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    `;
+
+    const bubbleStyle = s.position === 'top'
+        ? `top: ${rect.bottom + 10}px; left: ${Math.max(8, rect.left - 60)}px;`
+        : `bottom: ${window.innerHeight - rect.top + 10}px; left: ${Math.max(8, rect.left - 60)}px;`;
+    bubble.style.cssText += bubbleStyle;
+
+    bubble.innerHTML = `
+        <div style="font-size:20px;text-align:center;margin-bottom:6px">${s.icon}</div>
+        <div style="margin-bottom:10px">${s.message}</div>
+        <div style="display:flex;gap:6px;align-items:center">
+            <span style="font-size:11px;color:#9a7620">${step + 1}/${TUTORIAL_STEPS.length}</span>
+            ${step < TUTORIAL_STEPS.length - 1
+                ? `<button id="tut-next-btn" style="flex:1;min-height:40px;background:#2a1f0a;border:1px solid #8b6914;color:#d4a017;border-radius:6px;cursor:pointer;font-family:inherit;font-size:13px">下一步</button>`
+                : `<button id="tut-next-btn" style="flex:1;min-height:40px;background:#2a1f0a;border:1px solid #8b6914;color:#d4a017;border-radius:6px;cursor:pointer;font-family:inherit;font-size:13px">知道了！</button>`
+            }
+            <button id="tut-skip-btn" style="font-size:11px;color:#666;background:none;border:none;cursor:pointer;font-family:inherit">跳过</button>
+        </div>
+    `;
+
+    tutorialOverlay.appendChild(bubble);
+    document.body.appendChild(tutorialOverlay);
+
+    bubble.querySelector('#tut-next-btn').onclick = () => {
+        setTutorialStep(step + 1);
+        showTutorialStep(step + 1);
+    };
+    bubble.querySelector('#tut-skip-btn').onclick = () => {
+        completeTutorial();
+        if (tutorialOverlay) tutorialOverlay.remove();
+    };
+}
+
+function startTutorialIfNeeded() {
+    const step = getTutorialStep();
+    if (step >= 99 || step >= TUTORIAL_STEPS.length) return;
+    // Wait for DOM to be ready
+    setTimeout(() => showTutorialStep(step), 800);
+}
+
 function openBottomSheet(id) {
     const sheet = document.getElementById(id);
     if (!sheet) return;
@@ -1418,6 +1554,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (closeAch) closeAch.onclick = () => closeBottomSheet('achievements-sheet');
     const closeHist = document.getElementById('close-history-sheet');
     if (closeHist) closeHist.onclick = () => closeBottomSheet('history-sheet');
+    startTutorialIfNeeded();
 });
 
 // ── Init ─────────────────────────────────────────────
