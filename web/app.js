@@ -683,10 +683,18 @@ async function doBuySkill(skillId) {
 }
 
 async function doReincarnate() {
-    const state = await apiReincarnate();
-    if (!state || state.game_status === 'error') return;
-    clearNarrative();
-    applyState(state);
+    showConfirmSheet(
+        '🌟 确认转世',
+        '转世将重新开始游戏，当前属性和进度将重置。确定要转世重来吗？',
+        async () => {
+            const state = await apiReincarnate();
+            if (!state || state.game_status === 'error') return;
+            clearNarrative();
+            applyState(state);
+        },
+        '确认转世',
+        true
+    );
 }
 
 function renderNormal(state, panel) {
@@ -1152,10 +1160,17 @@ async function doCampaignDecline() {
 }
 
 async function doCampaignRetreat() {
-    if (!confirm('确定要撤退吗？名望-20，且无法获得战役奖励。')) return;
-    const state = await apiCampaignRetreat();
-    if (!state || state.game_status === 'error') return;
-    applyState(state);
+    showConfirmSheet(
+        '⚠️ 确认撤退',
+        '撤退将损失名望-20，且无法获得战役奖励。确定要撤退吗？',
+        async () => {
+            const state = await apiCampaignRetreat();
+            if (!state || state.game_status === 'error') return;
+            applyState(state);
+        },
+        '确认撤退',
+        true
+    );
 }
 
 // ── Choice event handlers ─────────────────────────────
@@ -1173,9 +1188,17 @@ async function doEquipReplace(slotIndex) {
 }
 
 async function doEquipDrop() {
-    const state = await apiEquipment('drop', null);
-    if (!state || state.game_status === 'error') return;
-    applyState(state);
+    showConfirmSheet(
+        '🗑️ 确认丢弃',
+        '丢弃装备后无法恢复，确定要丢弃吗？',
+        async () => {
+            const state = await apiEquipment('drop', null);
+            if (!state || state.game_status === 'error') return;
+            applyState(state);
+        },
+        '确认丢弃',
+        true
+    );
 }
 
 async function doUnequipSlot(slotIndex) {
@@ -1265,6 +1288,29 @@ function openBottomSheet(id) {
 function closeBottomSheet(id) {
     const sheet = document.getElementById(id);
     if (sheet) sheet.classList.remove('active');
+}
+
+// ── Reusable confirmation bottom sheet ─────────────────
+function showConfirmSheet(title, message, onConfirm, confirmLabel = '确认', danger = false) {
+    const existing = document.getElementById('confirm-sheet');
+    if (existing) existing.remove();
+    const div = document.createElement('div');
+    div.id = 'confirm-sheet';
+    div.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:9998;display:flex;align-items:flex-end;justify-content:center;padding:16px;';
+    div.innerHTML = `
+        <div style="background:#1a1208;border:1px solid ${danger?'#8b0000':'#8b6914'};border-radius:16px 16px 0 0;padding:20px;width:100%;max-width:480px;font-family:'Noto Serif SC',serif;">
+            <div style="font-size:18px;font-weight:bold;color:#d4a017;text-align:center;margin-bottom:8px">${title}</div>
+            <div style="font-size:14px;color:#8a7a5a;text-align:center;margin-bottom:16px;line-height:1.6">${message}</div>
+            <div style="display:flex;gap:8px">
+                <button id="sheet-cancel-btn" class="action-btn" style="flex:1;min-height:52px">取消</button>
+                <button id="sheet-ok-btn" class="action-btn ${danger?'danger':'primary'}" style="flex:1;min-height:52px">${confirmLabel}</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(div);
+    div.querySelector('#sheet-cancel-btn').onclick = () => div.remove();
+    div.querySelector('#sheet-ok-btn').onclick = () => { div.remove(); onConfirm(); };
+    div.onclick = (e) => { if (e.target === div) div.remove(); };
 }
 
 function doShowAchievements() {

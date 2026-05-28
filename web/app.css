@@ -134,8 +134,8 @@ body {
 .action-btn {
     flex: 1;
     min-width: 70px;
-    min-height: 44px;
-    padding: 8px 4px;
+    min-height: 48px;
+    padding: 10px 4px;
     background: #2a1f0a;
     color: var(--text);
     border: 1px solid var(--border);
@@ -145,10 +145,16 @@ body {
     cursor: pointer;
     text-align: center;
     transition: all 0.1s;
+    line-height: 1.3;
 }
 .action-btn:active { background: var(--border); transform: scale(0.97); }
 .action-btn.primary { background: linear-gradient(135deg, #5a3f08, #8b6914); border-color: var(--gold); color: var(--gold); font-weight: bold; }
-.action-btn.danger { border-color: var(--red); color: #ff6666; }
+.action-btn.danger {
+    border-color: var(--red);
+    color: #ff6666;
+    min-height: 52px;
+    font-weight: bold;
+}
 .action-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .btn-sub { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
 
@@ -170,7 +176,12 @@ body {
 .win-rate-val { font-weight: bold; font-size: 14px; }
 .wr-tag { font-weight: bold; }
 .power-terrain { margin-left: auto; font-size: 11px; color: #666; }
-.skill-btn { background: #1a2a1a; border-color: var(--green); color: #88cc88; }
+.skill-btn {
+    background: #1a2a1a;
+    border-color: var(--green);
+    color: #88cc88;
+    min-height: 52px;
+}
 
 /* Bottom nav */
 .bottom-nav {
