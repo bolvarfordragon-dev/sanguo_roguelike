@@ -940,7 +940,7 @@ class SanguoEngine:
         self._natural_recovery()
 
         # ============ 城市好感度每月变化 ============  
-        self._tick_city_favorability()
+        self._tick_favorability_monthly()
 
         # ============ NPC 位置同步（Timeline → 实际位置）============
         self._sync_npc_locations()
@@ -1443,6 +1443,16 @@ class SanguoEngine:
             cf = {}
         cf[city] = cf.get(city, config.CITY_FAVORABILITY["neutral"]) + delta
         cf[city] = max(0, min(100, cf[city]))
+        self.state.city_favorability = cf
+
+    def _tick_favorability_monthly(self):
+        """每月城市好感度自然变化（所有城市+1）"""
+        cf = self.state.city_favorability
+        if not cf:
+            return
+        for city in list(cf.keys()):
+            # 每月自然+1，但有上限
+            cf[city] = min(100, cf[city] + 1)
         self.state.city_favorability = cf
 
     def get_city_favorability(self, city):
