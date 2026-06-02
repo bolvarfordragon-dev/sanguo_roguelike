@@ -518,6 +518,10 @@ class SanguoEngine:
 
             loot_line = f"\n📦 战利品：金+{gold_loot}，粮+{food_loot}{merc_msg}{frag_msg}{equip_drop_msg}"
             narrative = session.get_full_narrative() + loot_line
+            # Mark crit/fumble for UI effects
+            self.pending_combat = self.pending_combat or {}
+            self.pending_combat["crit"] = session.is_crit
+            self.pending_combat["fumble"] = session.is_fumble
             # 战斗中胜利 +3 城市好感度
             self._modify_city_favorability(self.state.player.location, config.CITY_FAVORABILITY["battle_win_gain"])
             self.state.run_stats["wins"] = self.state.run_stats.get("wins", 0) + 1
@@ -550,6 +554,9 @@ class SanguoEngine:
             if session.attacker_damage > session.defender_damage * 2:
                 self.state.player.take_damage(random.randint(10, 30))
             narrative = session.get_full_narrative()
+            self.pending_combat = self.pending_combat or {}
+            self.pending_combat["crit"] = False
+            self.pending_combat["fumble"] = session.is_fumble
             self.state.battle_history.append({
                 "year": self.state.year, "month": self.state.month,
                 "enemy": enemy.name, "result": "loss",

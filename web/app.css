@@ -855,3 +855,82 @@ circle[style*="cursor:pointer"] { cursor: pointer; }
     color: #8a9adf;
     margin-bottom: 4px;
 }
+
+/* ====== CRIT / FUMBLE effects ====== */
+@keyframes critShake {
+  0%   { transform: translateX(0); }
+  15%  { transform: translateX(-8px) rotate(-1deg); }
+  30%  { transform: translateX(8px) rotate(1deg); }
+  45%  { transform: translateX(-5px) rotate(-0.5deg); }
+  60%  { transform: translateX(5px); }
+  75%  { transform: translateX(-3px); }
+  90%  { transform: translateX(2px); }
+  100% { transform: translateX(0); }
+}
+
+@keyframes fumbleShake {
+  0%   { transform: translateX(0); }
+  20%  { transform: translateX(-6px); }
+  40%  { transform: translateX(6px); }
+  60%  { transform: translateX(-4px); }
+  80%  { transform: translateX(3px); }
+  100% { transform: translateX(0); }
+}
+
+@keyframes critFlash {
+  0%   { opacity: 1; color: #ffd700; font-size: 1.1em; }
+  50%  { opacity: 0.8; color: #ff6b00; font-size: 1.3em; }
+  100% { opacity: 1; color: #ffd700; font-size: 1.1em; }
+}
+
+@keyframes fumbleFlash {
+  0%   { opacity: 1; color: #888; }
+  50%  { opacity: 0.6; color: #1a1a1a; }
+  100% { opacity: 1; color: #888; }
+}
+
+@keyframes floatUp {
+  0%   { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-60px); }
+}
+
+.screen-shake { animation: critShake 0.6s ease-out; }
+.screen-shake-fumble { animation: fumbleShake 0.5s ease-out; }
+
+.crit-banner {
+  position: fixed; top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 9999;
+  font-size: 2.2em; font-weight: 900;
+  color: #ffd700;
+  text-shadow: 0 0 20px #ff6b00, 0 0 40px #ff0000, 2px 2px 4px #000;
+  animation: critFlash 0.5s ease-in-out 2, floatUp 1s ease-out 0.5s forwards;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.crit-banner::before { content: "⚔️ "; }
+.crit-banner::after  { content: " ⚔️"; }
+
+.fumble-banner {
+  position: fixed; top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 9999;
+  font-size: 1.8em; font-weight: 900;
+  color: #aaaaaa;
+  text-shadow: 0 0 10px #333, 2px 2px 4px #000;
+  animation: fumbleFlash 0.5s ease-in-out 2, floatUp 1s ease-out 0.5s forwards;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.fumble-banner::before { content: "💀 "; }
+.fumble-banner::after  { content: " 💀"; }
+
+.fade-out { animation: fadeOutBanner 0.6s ease-out forwards; }
+@keyframes fadeOutBanner {
+  from { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  to   { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+}
+.crit-banner, .fumble-banner {
+  position: fixed; top: 40%; left: 50%;
+  transform: translate(-50%, -50%);
+}

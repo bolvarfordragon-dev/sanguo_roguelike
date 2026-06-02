@@ -275,6 +275,11 @@ function applyState(state) {
     renderActionPanel(state);
     renderEquipmentPanel(state);
     if (state.narrative) addNarrative(state.narrative);
+    if (state.combat_data) {
+        const cd = state.combat_data;
+        if (cd.crit)  showCritBanner();
+        if (cd.fumble) showFumbleBanner();
+    }
     if (state.pending_achievements && state.pending_achievements.length > 0) {
         state.pending_achievements.forEach(msg => showAchievementToast(msg));
     }
@@ -1261,6 +1266,42 @@ async function doUnequipSlot(slotIndex) {
     const state = await apiEquipment('drop', slotIndex);
     if (!state || state.game_status === 'error') return;
     applyState(state);
+}
+
+
+function showCritBanner() {
+    const el = document.getElementById('crit-banner');
+    if (el) el.remove();
+    const banner = document.createElement('div');
+    banner.id = 'crit-banner';
+    banner.className = 'crit-banner';
+    banner.textContent = '天佑！暴击！';
+    document.body.appendChild(banner);
+    // screen shake
+    const screens = document.querySelectorAll('.screen.active, .main-screen');
+    screens.forEach(s => s.classList.add('screen-shake'));
+    setTimeout(() => {
+        banner.classList.add('fade-out');
+        screens.forEach(s => s.classList.remove('screen-shake'));
+        setTimeout(() => banner.remove(), 600);
+    }, 1500);
+}
+
+function showFumbleBanner() {
+    const el = document.getElementById('fumble-banner');
+    if (el) el.remove();
+    const banner = document.createElement('div');
+    banner.id = 'fumble-banner';
+    banner.className = 'fumble-banner';
+    banner.textContent = '大凶！逆转！';
+    document.body.appendChild(banner);
+    const screens = document.querySelectorAll('.screen.active, .main-screen');
+    screens.forEach(s => s.classList.add('screen-shake-fumble'));
+    setTimeout(() => {
+        banner.classList.add('fade-out');
+        screens.forEach(s => s.classList.remove('screen-shake-fumble'));
+        setTimeout(() => banner.remove(), 600);
+    }, 1500);
 }
 
 function showAchievementToast(msg) {

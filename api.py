@@ -196,6 +196,13 @@ class SanguoAPI:
                     "win_rate": round(win_rate, 1),
                     "terrain": ctx.get("terrain", "平原"),
                 }
+                # Expose crit/fumble flags for UI effects
+                combat_data["crit"] = False
+                combat_data["fumble"] = False
+                # Read crit/fumble from engine after combat resolves
+                if self.engine.pending_combat is not None:
+                    combat_data["crit"] = self.engine.pending_combat.get("crit", False)
+                    combat_data["fumble"] = self.engine.pending_combat.get("fumble", False)
             except Exception:
                 pass  # power calc optional
 
