@@ -1455,6 +1455,11 @@ class SanguoEngine:
             cf[city] = min(100, cf[city] + 1)
         self.state.city_favorability = cf
 
+    def _add_narrative(self, msg):
+        """添加叙事文本（silent模式下忽略）"""
+        if not self.silent:
+            print(msg)
+
     def get_city_favorability(self, city):
         """获取城市好感度（未设置则返回中立50）"""
         return self.state.city_favorability.get(city, config.CITY_FAVORABILITY["neutral"])
