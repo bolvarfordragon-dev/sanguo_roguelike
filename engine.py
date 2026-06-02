@@ -39,6 +39,213 @@ NPC_GIFT_SKILLS = {
     "曹操": {"skill_id": "wei_strategy", "type": "passive"},
 }
 
+# ============ 羁绊定义 ============
+BOND_DEFINITIONS = {
+    "桃园三兄弟": {
+        "desc": "刘/关/张桃园结义，情同手足",
+        "members": ["刘备", "关羽", "张飞"],
+        "synergy_bonus": {"武": 5, "名": 3},
+        "completion_bonus": {"技能": "义结金兰"},
+        "completion_desc": "【义结金兰】满级：全队武力+15，魅力+10",
+    },
+    "五虎上将": {
+        "desc": "蜀汉五虎将，并肩作战天下无敌",
+        "members": ["关羽", "张飞", "赵云", "黄忠", "马超"],
+        "synergy_bonus": {"武": 4, "运": 2},
+        "completion_bonus": {"技能": "龙胆"},
+        "completion_desc": "【龙胆】强化：战斗暴击率+15%",
+    },
+    "诸葛四友": {
+        "desc": "诸葛亮与四位好友",
+        "members": ["诸葛亮", "庞统", "徐庶"],
+        "synergy_bonus": {"智": 5, "魅": 2},
+        "completion_bonus": {"技能": "隆中策"},
+        "completion_desc": "【隆中策】满级：智谋判定成功率+20%",
+    },
+    "三顾茅庐": {
+        "desc": "刘备三顾茅庐，诸葛亮出山",
+        "members": ["刘备", "诸葛亮"],
+        "synergy_bonus": {"名": 8, "魅": 5},
+        "completion_bonus": {"技能": "三顾茅庐"},
+        "completion_desc": "【三顾茅庐】：历史事件触发率+30%",
+    },
+    "五子良将": {
+        "desc": "曹魏五子良将",
+        "members": ["张辽", "徐晃", "张郃", "乐进", "于禁"],
+        "synergy_bonus": {"武": 3, "名": 2},
+        "completion_bonus": {"被动": "兵贵神速"},
+        "completion_desc": "【兵贵神速】：移动消耗-30%",
+    },
+    "颍川双杰": {
+        "desc": "荀彧郭嘉，颍川奇士",
+        "members": ["荀彧", "郭嘉"],
+        "synergy_bonus": {"智": 8, "名": 3},
+        "completion_bonus": {"技能": "遗计定辽东"},
+        "completion_desc": "【遗计定辽东】：智能判定大吉概率+25%",
+    },
+    "河北四庭柱": {
+        "desc": "袁绍麾下四大名将",
+        "members": ["张郃", "颜良", "文丑", "高览"],
+        "synergy_bonus": {"武": 4},
+        "completion_bonus": {"称号": "河北猛将"},
+        "completion_desc": "【河北猛将】：对袁绍势力战斗伤害+20%",
+    },
+    "襄樊死斗": {
+        "desc": "关羽庞德，襄樊之战生死对决",
+        "members": ["关羽", "庞德"],
+        "synergy_bonus": {"武": 6, "运": 3},
+        "completion_bonus": {"被动": "殊死一战"},
+        "completion_desc": "【殊死一战】：HP<30%时武力额外+10",
+    },
+    "江东三代": {
+        "desc": "孙坚孙策孙权，江东三代雄主",
+        "members": ["孙坚", "孙权", "孙策"],
+        "synergy_bonus": {"武": 3, "名": 4, "魅": 3},
+        "completion_bonus": {"技能": "江东之主"},
+        "completion_desc": "【江东之主】：吴国阵营所有单位属性+10%",
+    },
+    "江东四杰": {
+        "desc": "孙策周瑜鲁肃陆逊，江东四大英杰",
+        "members": ["孙策", "周瑜", "鲁肃", "陆逊"],
+        "synergy_bonus": {"智": 4, "魅": 3},
+        "completion_bonus": {"技能": "火烧赤壁"},
+        "completion_desc": "【火烧赤壁】：吴阵营战役伤害+25%",
+    },
+    "孙策知遇": {
+        "desc": "孙策得太史慈，英雄相惜",
+        "members": ["孙策", "太史慈"],
+        "synergy_bonus": {"武": 5, "名": 4},
+        "completion_bonus": {"被动": "知遇之恩"},
+        "completion_desc": "【知遇之恩】：每招募一个吴阵营NPC，全属性+1",
+    },
+    "虎痴恶来": {
+        "desc": "典韦许褚，曹操双虎将",
+        "members": ["典韦", "许褚"],
+        "synergy_bonus": {"武": 6, "运": 3},
+        "completion_bonus": {"被动": "护卫神通"},
+        "completion_desc": "【护卫神通】：主将存活时，部将阵亡概率-50%",
+    },
+    "夏侯兄弟": {
+        "desc": "夏侯惇夏侯渊，曹操倚重宗族将",
+        "members": ["夏侯惇", "夏侯渊"],
+        "synergy_bonus": {"武": 5, "名": 3},
+        "completion_bonus": {"称号": "宗族虎将"},
+        "completion_desc": "【宗族虎将】：魏阵营NPC招募好感度+20",
+    },
+    "曹氏兄弟": {
+        "desc": "曹操曹仁曹氏宗族",
+        "members": ["曹操", "曹仁"],
+        "synergy_bonus": {"武": 3, "名": 5, "魅": 4},
+        "completion_bonus": {"被动": "魏武雄风"},
+        "completion_desc": "【魏武雄风】：魏阵营NPC属性+8%",
+    },
+    "乱世奸雄": {
+        "desc": "曹操，乱世之枭雄",
+        "members": ["曹操"],
+        "synergy_bonus": {"名": 6, "魅": 5, "智": 3},
+        "completion_bonus": {"被动": "奸雄本色"},
+        "completion_desc": "【奸雄本色】：对非魏阵营NPC招募成功率+15%",
+    },
+    "鹰视狼顾": {
+        "desc": "司马懿鹰视狼顾，厚黑隐忍",
+        "members": ["司马懿"],
+        "synergy_bonus": {"智": 8, "运": 4},
+        "completion_bonus": {"被动": "隐忍待发"},
+        "completion_desc": "【隐忍待发】：每亏损一月，智谋+2（最高+20）",
+    },
+    "黄巾起义": {
+        "desc": "张角管亥，黄巾残部",
+        "members": ["张角", "管亥"],
+        "synergy_bonus": {"名": 5, "魅": 4},
+        "completion_bonus": {"技能": "天公将军"},
+        "completion_desc": "【天公将军】：名望获取+50%，触发农民起义事件",
+    },
+    "荆州守将": {
+        "desc": "文聘守江夏，关羽为荆州守将",
+        "members": ["文聘"],
+        "synergy_bonus": {"武": 3, "名": 2},
+        "completion_bonus": {"称号": "守土有责"},
+        "completion_desc": "【守土有责】：驻守城市时，防御判定+20%",
+    },
+    "锦帆贼": {
+        "desc": "甘宁锦帆贼，水贼出身",
+        "members": ["甘宁"],
+        "synergy_bonus": {"武": 4, "运": 3},
+        "completion_bonus": {"被动": "水战精通"},
+        "completion_desc": "【水战精通】：水战场合战斗力+25%",
+    },
+    "谋士无双": {
+        "desc": "陈宫智谋无双",
+        "members": ["陈宫"],
+        "synergy_bonus": {"智": 6, "名": 3},
+        "completion_bonus": {"技能": "陈宫之策"},
+        "completion_desc": "【陈宫之策】：战斗中敌方智力降低10%",
+    },
+    "算无遗策": {
+        "desc": "贾诩算无遗策，三国第一毒士",
+        "members": ["贾诩"],
+        "synergy_bonus": {"智": 8, "魅": 4},
+        "completion_bonus": {"被动": "毒士本色"},
+        "completion_desc": "【毒士本色】：战斗中对方承受额外智谋伤害15%",
+    },
+    "董卓之乱": {
+        "desc": "董卓，祸乱朝纲",
+        "members": ["董卓"],
+        "synergy_bonus": {"武": 5, "名": -3, "魅": 5},
+        "completion_bonus": {"被动": "暴虐天下"},
+        "completion_desc": "【暴虐天下】：城市好感度提升/下降幅度+50%",
+    },
+    "河北霸主": {
+        "desc": "袁绍，河南霸主",
+        "members": ["袁绍"],
+        "synergy_bonus": {"名": 6, "魅": 4},
+        "completion_bonus": {"称号": "诸侯之首"},
+        "completion_desc": "【诸侯之首】：群雄NPC招募成功率+20%",
+    },
+    "汜水虎将": {
+        "desc": "华雄汜水虎将",
+        "members": ["华雄"],
+        "synergy_bonus": {"武": 5, "运": 3},
+        "completion_bonus": {"称号": "虎牢先锋"},
+        "completion_desc": "【虎牢先锋】：对吕布军伤害+15%",
+    },
+    "义父子弑": {
+        "desc": "吕布弑父，背主求荣",
+        "members": ["吕布"],
+        "synergy_bonus": {"武": 5, "魅": -5},
+        "completion_bonus": {"称号": "三姓家奴"},
+        "completion_desc": "【三姓家奴】：可背叛阵营重新加入，每局限1次",
+    },
+    "反骨天生": {
+        "desc": "魏延天生反骨",
+        "members": ["魏延"],
+        "synergy_bonus": {"武": 5, "魅": -3},
+        "completion_bonus": {"称号": "脑后反骨"},
+        "completion_desc": "【脑后反骨】：可主动背叛阵营获得额外奖励",
+    },
+    "蜀中双杰": {
+        "desc": "法正蜀中双杰",
+        "members": ["法正"],
+        "synergy_bonus": {"智": 5, "名": 3},
+        "completion_bonus": {"被动": "蜀中智囊"},
+        "completion_desc": "【蜀中智囊】：蜀阵营NPC智力+8%",
+    },
+    "威震逍遥津": {
+        "desc": "张辽威震逍遥津",
+        "members": ["张辽"],
+        "synergy_bonus": {"武": 6, "名": 4},
+        "completion_bonus": {"称号": "江东小儿止啼"},
+        "completion_desc": "【江东小儿止啼】：对吴阵营战斗力+20%",
+    },
+    "草莽豪杰": {
+        "desc": "江湖游侠，草莽出身",
+        "members": ["江湖游侠"],
+        "synergy_bonus": {"武": 3, "魅": 4},
+        "completion_bonus": {"称号": "绿林好汉"},
+        "completion_desc": "【绿林好汉】：野外遭遇有利事件概率+30%",
+    },
+}
+
 
 class CombatEnemy:
     """战斗中的敌方单位（程序生成的敌人）"""
@@ -152,6 +359,8 @@ class SanguoEngine:
                 preset_stats=preset["stats"],
                 rank=preset.get("rank", "武将"),
                 location=preset.get("location", "未知"),
+                faction=preset.get("faction", "群雄"),
+                bonds=preset.get("bonds", []),
             )
             self.state.npcs[name] = npc
 
@@ -239,7 +448,7 @@ class SanguoEngine:
         if ming_bonus > 0:
             self.state.player.stats["名"] += ming_bonus
 
-        session = start_combat(self.state.player, enemy, ctx)
+        session = start_combat(self.state.player, enemy, ctx, engine=self)
         session.simulate(player_action=action, active_skill=active_skill)
 
         # 移除临时光环加成
@@ -420,8 +629,37 @@ class SanguoEngine:
             print("请输入 'buy' 或 'sell' 或 'leave'。")
             return False
 
+    def _get_city_danger(self, city, year):
+        """计算城市危险等级（1-4：低/中/高/极危），考虑年份和地点"""
+        # 危险城市列表（关隘、高战乱地区）
+        high_danger_cities = {"汜水关", "虎牢关", "武关", "黎阳", "仓亭", "白马"}
+        mid_danger_cities = {"洛阳", "长安", "陈留", "邺城", "濮阳", "酸枣"}
+        low_danger_cities = {"颍川", "南阳", "汝南", "谯郡", "建业", "吴郡", "成都", "绵竹"}
+
+        if city in high_danger_cities:
+            base = 4
+        elif city in mid_danger_cities:
+            base = 3
+        elif city in low_danger_cities:
+            base = 1
+        else:
+            base = 2  # 中等
+
+        # 年份修正：190年后战争加剧
+        if year >= 200:
+            year_mod = 1
+        elif year >= 195:
+            year_mod = 0
+        elif year >= 190:
+            year_mod = -1
+        else:
+            year_mod = -2
+
+        danger = max(1, min(4, base + year_mod))
+        return danger
+
     def show_intel(self, cost=20):
-        """花钱打听消息，获得所有重要NPC的当前位置和路线"""
+        """花钱打听消息，获得所有重要NPC的当前位置、路线，以及城市危险等级"""
         p = self.state.player
         if p.gold < cost:
             print(f"盘缠不足，打听消息需要{cost}金，你只有{p.gold}金。")
@@ -429,10 +667,20 @@ class SanguoEngine:
         p.gold -= cost
         current_year = self.state.year
         from world import find_path
+        danger_labels = {1: "🟢低", 2: "🟡中", 3: "🟠高", 4: "🔴极危"}
+        my_danger = self._get_city_danger(p.location, current_year)
         print(f"""
 {'─'*40}
 📰 江湖消息（花费{cost}金）
-{'─'*40}""")
+{'─'*40}
+  📍当前所在: {p.location} {danger_labels.get(my_danger,'🟡中')}""")
+        # 显示附近城市危险等级
+        from world import get_adjacent_cities
+        adj = get_adjacent_cities(p.location)
+        if adj:
+            adj_dangers = [f"{c}{danger_labels.get(self._get_city_danger(c, current_year),'🟡中')}" for c in adj[:5]]
+            print(f"  🗺️ 邻近城市: {"  ".join(adj_dangers)}")
+        print()
         for npc_name, npc in self.state.npcs.items():
             if npc.hp <= 0:
                 continue
@@ -441,6 +689,8 @@ class SanguoEngine:
             loc = get_npc_location(npc_name, current_year)
             npc_type = getattr(npc, 'npc_type', '武将')
             type_icon = '⚔️' if npc_type == '武将' else ('📚' if npc_type == '文官' else '👑')
+            faction = getattr(npc, 'faction', '群雄')
+            faction_icon = {'蜀': '🟡', '魏': '🔵', '吴': '🟢', '群雄': '⚪', '民间': '⬜'}.get(faction, '⚪')
             leader_tag = ' [阵营领袖]' if is_faction_leader(npc_name) else ''
             recruited_tag = ' ✅已招募' if self.state.event_flags.get(f'已招募_{npc_name}', False) else ''
 
@@ -454,7 +704,16 @@ class SanguoEngine:
                 else:
                     location_hint = f"「{loc}」"
 
-            print(f"  {type_icon} {npc_name} {location_hint}{leader_tag}{recruited_tag}")
+            print(f"  {faction_icon}{type_icon} {npc_name} {location_hint}{leader_tag}{recruited_tag}")
+        # 显示阵营协同加成
+        synergy = self.get_faction_synergy_bonus()
+        if synergy > 0:
+            print(f"  🏅 阵营协同: 武+{synergy*2}（同阵营≥2人加成中）")
+        # 显示已招募阵营统计
+        factions = self.get_recruited_factions()
+        if factions:
+            faction_desc = "、".join([f"{k}{v}人" for k, v in factions.items()])
+            print(f"  已招募: {faction_desc}")
         print()
 
     def move_to(self, target_city):
@@ -483,6 +742,9 @@ class SanguoEngine:
         # Track visited cities for exploration progress
         if target_city not in self.state.visited_cities:
             self.state.visited_cities.append(target_city)
+            # Explorer 专属奖励：首次到达新城市 → +1 传承碎片
+            self.state.player.inheritance_fragments += 1
+            self.state.run_stats["exploration_rewards"] = self.state.run_stats.get("exploration_rewards", 0) + 1
 
         # 时间推进
         self.state.advance_time(move_info["time"])
@@ -646,6 +908,7 @@ class SanguoEngine:
         mandatory_result = trigger_mandatory_event(self.state, year, month)
         if mandatory_result:
             self.state.run_stats["karma_history_events"] = self.state.run_stats.get("karma_history_events", 0) + 1
+            self.state.run_stats["events_triggered_this_run"] = self.state.run_stats.get("events_triggered_this_run", 0) + 1
             self.state.history_log.append({"year": year, "month": month, "name": mandatory_result["name"], "type": "mandatory"})
 
         # 检查条件事件
@@ -655,6 +918,7 @@ class SanguoEngine:
             if r:
                 conditional_results.append(r)
                 self.state.run_stats["karma_history_events"] = self.state.run_stats.get("karma_history_events", 0) + 1
+                self.state.run_stats["events_triggered_this_run"] = self.state.run_stats.get("events_triggered_this_run", 0) + 1
                 self.state.history_log.append({"year": year, "month": month, "name": r.get("name", "未知事件"), "type": "conditional"})
 
         # 检查特殊事件
@@ -663,12 +927,16 @@ class SanguoEngine:
             if r:
                 conditional_results.append(r)
                 self.state.run_stats["karma_history_events"] = self.state.run_stats.get("karma_history_events", 0) + 1
+                self.state.run_stats["events_triggered_this_run"] = self.state.run_stats.get("events_triggered_this_run", 0) + 1
 
         # 自然恢复
         self._natural_recovery()
 
-        # ============ 城市好感度每月变化 ============
+        # ============ 城市好感度每月变化 ============  
         self._tick_city_favorability()
+
+        # ============ NPC 位置同步（Timeline → 实际位置）============
+        self._sync_npc_locations()
 
         # 随机事件（单挑/舌战/奇遇/凶兆）
         random_results = []
@@ -1020,8 +1288,139 @@ class SanguoEngine:
                     bonus += 10
         return bonus
 
-    def _tick_city_favorability(self):
-        """每月城市好感度变化：玩家所在城市+1，其他城市不变"""
+    def _sync_npc_locations(self):
+        """每月同步 NPC 实际位置为 timeline 位置"""
+        if not self.state or not self.state.npcs:
+            return
+        year = self.state.year
+        for name, npc in self.state.npcs.items():
+            if npc.hp <= 0:
+                continue
+            new_loc = get_npc_location(name, year)
+            if new_loc and new_loc != npc.location:
+                npc.location = new_loc
+
+    def get_bond_synergy_bonus(self):
+        """计算羁绊协同加成（同羁绊≥2人触发，按比例计算加成）"""
+        if not self.state:
+            return {}
+        bond_stat_bonus = {}
+        for bond_id, bond_def in BOND_DEFINITIONS.items():
+            members = bond_def["members"]
+            recruited = [m for m in members if self.state.event_flags.get(f"已招募_{m}", False)]
+            if len(recruited) < 2:
+                continue
+            # 按比例计算加成（2/3桃园三兄弟 → 获得66%的羁绊加成）
+            ratio = len(recruited) / len(members)
+            for stat, val in bond_def.get("synergy_bonus", {}).items():
+                bond_stat_bonus[stat] = bond_stat_bonus.get(stat, 0) + val * ratio
+        return bond_stat_bonus
+
+    def get_total_synergy_bonus(self):
+        """阵营+羁绊总协同加成，返回总百分比"""
+        if not self.state:
+            return 0
+        # 阵营协同
+        faction_counts = {"蜀": 0, "魏": 0, "吴": 0, "群雄": 0, "民间": 0}
+        for name, npc in self.state.npcs.items():
+            if self.state.event_flags.get(f"已招募_{name}", False):
+                faction = getattr(npc, 'faction', '群雄')
+                if faction in faction_counts:
+                    faction_counts[faction] += 1
+        faction_synergy = 0
+        for count in faction_counts.values():
+            if count >= 2:
+                faction_synergy += (count - 1) * 2
+        # 羁绊协同（百分比加成的百分比估算）
+        bond_bonus = self.get_bond_synergy_bonus()
+        bond_pct = sum(bond_bonus.values())  # 把属性加成估算为百分比
+        return faction_synergy + int(bond_pct)
+
+    def get_faction_synergy_bonus(self):
+        """计算阵营协同加成（招募的NPC中同阵营的人数）"""
+        if not self.state:
+            return 0
+        faction_counts = {"蜀": 0, "魏": 0, "吴": 0, "群雄": 0, "民间": 0}
+        for name, npc in self.state.npcs.items():
+            if self.state.event_flags.get(f"已招募_{name}", False):
+                faction = getattr(npc, 'faction', '群雄')
+                if faction in faction_counts:
+                    faction_counts[faction] += 1
+        total = 0
+        for count in faction_counts.values():
+            if count >= 2:
+                total += (count - 1) * 2
+        return total
+
+    def get_recruited_factions(self):
+        """返回已招募NPC的阵营统计"""
+        faction_counts = {"蜀": 0, "魏": 0, "吴": 0, "群雄": 0, "民间": 0}
+        for name, npc in self.state.npcs.items():
+            if self.state.event_flags.get(f"已招募_{name}", False):
+                faction = getattr(npc, 'faction', '群雄')
+                if faction in faction_counts:
+                    faction_counts[faction] += 1
+        return {k: v for k, v in faction_counts.items() if v > 0}
+
+    def _check_and_trigger_bond_discovery(self, npc_name):
+        """检测并触发羁绊发现提示"""
+        if npc_name not in NPC_PRESETS:
+            return
+        bonds = NPC_PRESETS[npc_name].get("bonds", [])
+        discovered = []
+        completed = []
+        for bond_id in bonds:
+            if bond_id not in BOND_DEFINITIONS:
+                continue
+            bond = BOND_DEFINITIONS[bond_id]
+            members = bond["members"]
+            # 统计当前已招募的成员数
+            recruited = sum(1 for m in members if self.state.event_flags.get(f"已招募_{m}", False))
+            # 当前招募后会是几人
+            after_recruit = recruited + 1
+            if after_recruit == len(members):
+                completed.append(bond_id)
+            elif after_recruit >= 2:
+                discovered.append(bond_id)
+        # 显示提示
+        if completed:
+            msg = f"\n🌟✨ 【{npc_name}】加入，【{completed[0]}】羁绊满员！\n  → {BOND_DEFINITIONS[completed[0]]['completion_desc']}"
+            self._add_narrative(msg)
+            self.state.event_flags[f"羁绊满员_{completed[0]}"] = True
+            self.apply_completion_bonus(completed[0])
+        elif discovered:
+            msg = f"\n🌸 【{npc_name}】加入，发现【{discovered[0]}】羁绊！\n  → {BOND_DEFINITIONS[discovered[0]]['desc']}"
+            self._add_narrative(msg)
+
+    def apply_completion_bonus(self, bond_id):
+        """应用羁绊满员效果"""
+        if bond_id not in BOND_DEFINITIONS:
+            return
+        bond = BOND_DEFINITIONS[bond_id]
+        bonus = bond.get("completion_bonus", {})
+        p = self.state.player
+        if "技能" in bonus:
+            skill_id = bonus["技能"]
+            skill = get_skill(skill_id)
+            if skill:
+                # 给玩家满级或解锁该技能
+                if skill.skill_type == "passive":
+                    if skill_id not in p.passive_skills:
+                        p.passive_skills.append(skill_id)
+                else:
+                    if skill_id not in p.active_skills:
+                        p.active_skills.append(skill_id)
+                self._add_narrative(f"  🎯 解锁【{skill.name}】！")
+        if "被动" in bonus:
+            passive_id = bonus["被动"]
+            if passive_id not in p.passive_skills:
+                p.passive_skills.append(passive_id)
+            self._add_narrative(f"  🎯 获得被动【{passive_id}】！")
+        if "称号" in bonus:
+            title = bonus["称号"]
+            self.state.event_flags[f"称号_{title}"] = True
+            self._add_narrative(f"  🎯 获得称号【{title}】！")
+
         cf = self.state.city_favorability
         if not cf:
             cf = {}
@@ -1125,14 +1524,20 @@ class SanguoEngine:
         elif choice == "5":  # 交谈
             info = self._get_npc_intel(npc)
             print(info)
-            # 交谈行为业力：魅+0.2
+            # 交谈后：下次招募该NPC时+10%成功率
+            self.state.event_flags[f"talked_{npc_name}"] = True
             self.state.run_stats["karma_conversation"] = self.state.run_stats.get("karma_conversation", 0) + 0.2
+            self.pending_npc_encounter = None
+            return  # 保持遭遇状态，可以继续选择其他选项
 
         elif choice == "6":  # 索取情报
             intel = self._get_npc_intel(npc, detailed=True)
             print(intel)
-            # 索取情报行为业力：智+0.3（获得知识）
+            # 索取情报后：下次招募该NPC时+10%成功率
+            self.state.event_flags[f"intel_{npc_name}"] = True
             self.state.run_stats["karma_intel"] = self.state.run_stats.get("karma_intel", 0) + 0.3
+            self.pending_npc_encounter = None
+            return  # 保持遭遇状态，可以继续选择其他选项
 
         else:
             print("无效选择，请输入 1-7。")
@@ -1188,6 +1593,13 @@ class SanguoEngine:
         rel = p.get_relation(npc.name)
         rel_mod = (rel / 100) * 0.30
 
+        # ========== 多轮互动加成（交谈/索取情报后，下次招募+10%）==========
+        interaction_bonus = 0.0
+        if self.state.event_flags.get(f"talked_{npc.name}", False):
+            interaction_bonus += 0.10
+        if self.state.event_flags.get(f"intel_{npc.name}", False):
+            interaction_bonus += 0.10
+
         # ========== 对话策略 ==========
         strategy_mods = {
             "sincere": 0.10,
@@ -1218,7 +1630,7 @@ class SanguoEngine:
             p.gold -= cost
 
         final_rate = (base_rate + rank_mod + charisma_mod + npc_stat_mod
-                     + rel_mod + strategy_mod)
+                     + rel_mod + strategy_mod + interaction_bonus)
         final_rate = max(0.05, min(0.90, final_rate))
 
         success = random.random() < final_rate
@@ -1263,6 +1675,8 @@ class SanguoEngine:
                 if skill:
                     p.add_skill(gift["skill_id"])
                     gift_msg = f"\n「你我共事，我有一技相赠——」\n「此乃'{skill.name}'，愿你善用之。」\n（获得技能：{skill.name}）"
+            # 羁绊发现检测
+            self._check_and_trigger_bond_discovery(npc.name)
             return True, f"\n{npc.name}点头应允，愿意加入麾下！\n（{npc.name}已加入队伍，好感度+20）{gift_msg}"
         else:
             penalty = -10 if strategy == "coerce" else -5

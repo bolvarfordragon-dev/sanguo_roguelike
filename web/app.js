@@ -735,8 +735,9 @@ function renderNormal(state, panel) {
     html += '</div>';
 
     if (moves.length > 0) {
-        html += '<div class="action-row">';
-        moves.forEach(city => {
+        html += '<div style="font-size:11px;color:#8a7840;margin:4px 0 2px">📍 可前往（由近及远）</div>';
+        html += '<div class="action-row" style="flex-wrap:wrap;gap:6px">';
+        moves.slice(0, 4).forEach(city => {
             html += `<button class="action-btn" onclick="doMove('${city}')">📍 ${city}</button>`;
         });
         html += '</div>';

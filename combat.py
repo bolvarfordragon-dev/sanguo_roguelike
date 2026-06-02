@@ -222,6 +222,11 @@ class CombatSession:
         elif "负伤" in char.effects:
             base *= 0.7
 
+        # 阵营协同加成（玩家战斗时生效）
+        if getattr(char, 'is_player', False) and hasattr(self, '_engine'):
+            synergy = self._engine.get_faction_synergy_bonus()
+            base *= (1 + synergy * 0.02)  # 每点协同 +2% 基础战力
+
         power = base * troop_factor * morale_factor * (1 + terrain_bonus + weather_bonus)
         return power
 
@@ -378,7 +383,7 @@ class CombatSession:
         return actions
 
 
-def start_combat(player, enemy, ctx):
+def start_combat(player, enemy, ctx, engine=None):
     """
     启动一次战斗会话
     ctx: dict — {
@@ -390,8 +395,11 @@ def start_combat(player, enemy, ctx):
         "attacker_morale": int,
         "defender_morale": int,
     }
+    engine: 可选，传入 engine 实例以支持阵营协同等引擎级加成
     """
     session = CombatSession(player, enemy, ctx)
+    if engine is not None:
+        session._engine = engine
     return session
 
 

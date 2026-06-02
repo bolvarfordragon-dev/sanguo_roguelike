@@ -427,6 +427,79 @@ NPC_SCHEDULE = {
         ],
         "is_faction_leader": False,
     },
+    # ========== 新增魏国武将 ==========
+    "典韦": {
+        "active_years": [184, 200],
+        "home_base": "许昌",
+        "timeline": [
+            {"years": [184, 190], "location": "陈留", "event": "早年生平，勇力过人"},
+            {"years": [190, 200], "location": "许昌", "event": "曹操下部，护卫典韦"},
+        ],
+        "is_faction_leader": False,
+    },
+    "许褚": {
+        "active_years": [184, 220],
+        "home_base": "许昌",
+        "timeline": [
+            {"years": [184, 195], "location": "谯县", "event": "宗族部曲"},
+            {"years": [195, 220], "location": "许昌", "event": "归曹操，虎痴护卫"},
+        ],
+        "is_faction_leader": False,
+    },
+    "夏侯惇": {
+        "active_years": [184, 220],
+        "home_base": "陈留",
+        "timeline": [
+            {"years": [184, 190], "location": "陈留", "event": "夏侯宗族"},
+            {"years": [190, 220], "location": "许昌", "event": "曹操下部，盲眼之将"},
+        ],
+        "is_faction_leader": False,
+    },
+    "夏侯渊": {
+        "active_years": [184, 219],
+        "home_base": "陈留",
+        "timeline": [
+            {"years": [184, 190], "location": "陈留", "event": "夏侯宗族"},
+            {"years": [190, 219], "location": "白马", "event": "曹操下部，平定凉州"},
+        ],
+        "is_faction_leader": False,
+    },
+    "曹仁": {
+        "active_years": [188, 223],
+        "home_base": "陈留",
+        "timeline": [
+            {"years": [188, 200], "location": "陈留", "event": "曹操族弟"},
+            {"years": [200, 223], "location": "樊城", "event": "镇守樊城"},
+        ],
+        "is_faction_leader": False,
+    },
+    # ========== 新增民间/群雄 ==========
+    "张角": {
+        "active_years": [184, 184],
+        "home_base": "邺城",
+        "timeline": [
+            {"years": [184, 184], "location": "邺城", "event": "黄巾之乱，天公将军"},
+        ],
+        "is_faction_leader": False,
+    },
+    "文聘": {
+        "active_years": [208, 230],
+        "home_base": "江夏",
+        "timeline": [
+            {"years": [208, 215], "location": "江夏", "event": "刘表下部"},
+            {"years": [215, 230], "location": "江夏", "event": "曹丕下部，镇守江夏"},
+        ],
+        "is_faction_leader": False,
+    },
+    "管亥": {
+        "active_years": [184, 196],
+        "home_base": "北海",
+        "timeline": [
+            {"years": [184, 196], "location": "北海", "event": "黄巾残部渠帅"},
+        ],
+        "is_faction_leader": False,
+    },
+
 
     }
 
