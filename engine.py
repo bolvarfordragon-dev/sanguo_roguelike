@@ -1946,27 +1946,75 @@ class SanguoEngine:
 
         self._save_reincarnation(karma_data)
 
-        # 叙事：灵魂游荡 + 轮回叙事
+        # 业力来源映射
+        karma_sources = {
+            "武": {"战斗胜利": rs.get("karma_wins", 0),
+                   "挑战强敌": rs.get("karma_upsets", 0)},
+            "魅": {"招募NPC": rs.get("karma_npc_recruited", 0),
+                    "深入交谈": rs.get("karma_conversation", 0) * 0.2},
+            "名": {"触发历史事件": rs.get("karma_history_events", 0)},
+            "智": {"舌战胜": rs.get("karma_speech_wins", 0) * 0.5,
+                   "索取情报": rs.get("karma_intel", 0) * 0.3},
+            "运": {"稀有遭遇": rs.get("karma_rare_encounters", 0) * 0.5},
+        }
+
+        def progress_bar(current, cap, width=10):
+            if cap <= 0:
+                return "▓" * width
+            filled = min(width, int(current / cap * width))
+            return "▓" * filled + "░" * (width - filled)
+
+        def next_threshold(current, step=20):
+            return (current // step + 1) * step
+
         print(f"""
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🌀 你的灵魂在乱世中游荡...
    轮回之力将你重新投入193年的风暴中。
-
-   本局业力累积：{'、'.join(karma_gain_display) if karma_gain_display else '无'}
-
-🌅 你已完成 {total_lives} 次轮回。
-   当前总业力：
 """)
-        for stat, val in player_karma.items():
-            if val > 0:
-                print(f"   {stat}：{val}")
 
-        # ========== 转世成功动画文字 ==========
+        # 本局来源明细
+        print("📜 【本局业力来源】")
+        has_any = False
+        for stat in ["武", "智", "名", "魅", "运"]:
+            b_val = behavior_karma.get(stat, 0)
+            d_val = death_karma.get(stat, 0)
+            total_val = b_val + d_val
+            if total_val > 0:
+                has_any = True
+                parts_src = []
+                for label, val in karma_sources.get(stat, {}).items():
+                    if val > 0:
+                        parts_src.append(f"{label}+{int(val)}")
+                src_str = " / ".join(parts_src) if parts_src else "（无记录）"
+                print(f"  {stat}：+{int(total_val)}  （{src_str}）")
+        if not has_any:
+            print("  本局无业力累积")
+
+        print(f"""
+
+🌅 你已完成 {total_lives} 次轮回。当前总业力：
+""")
+
+        # 进度条展示
+        for stat in ["武", "智", "名", "魅", "运"]:
+            val = player_karma.get(stat, 0)
+            cap_stat = caps.get(stat, 20)
+            eq_bonus = self._get_equipment_karma_cap_bonus(stat)
+            total_cap = cap_stat + eq_bonus
+            if val > 0 or total_cap > 0:
+                bar = progress_bar(val, total_cap)
+                next_val = next_threshold(val)
+                remaining = max(0, next_val - val)
+                print(f"  {stat}：{val:>4} / {total_cap:<4}  {bar}  （距下级 {remaining}）")
+            else:
+                print(f"  {stat}：0 / {total_cap}  {"░" * 10}  （距下级 20）")
+
         print(f"""
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ✨【转世成功】✨
    轮回数：{total_lives}世
-   本次转世加成：{'、'.join(karma_gain_display) if karma_gain_display else '无'}
+   本次转世加成：{', '.join(karma_gain_display) if karma_gain_display else '无'}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 """)
 
