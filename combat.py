@@ -164,6 +164,8 @@ class CombatSession:
 
         self.winner = self.attacker if player_won else self.defender
         self.loser = self.defender if player_won else self.attacker
+        self.is_crit = is_crit
+        self.is_fumble = is_fumble
 
         # ============ 生成叙事 ============
         self._generate_narrative(player_action, action_info, dice, is_crit, is_fumble, player_won, fled)
