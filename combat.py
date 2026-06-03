@@ -99,6 +99,24 @@ class CombatSession:
                 # 龙胆：HP>50时武力+15（通过get_effective_stat处理，不在这里做额外操作）
                 pass
 
+        # Buff/Debuff 战斗效果（主动技能处理后，action_info使用前应用）
+        if hasattr(self.attacker, 'get_combat_mods'):
+            mods = self.attacker.get_combat_mods()
+            for k, v in mods.items():
+                if k == 'win_rate':
+                    skill_winrate_mod += v
+                elif k == 'crit_rate':
+                    skill_crit_bonus += v
+                elif k == 'damage':
+                    skill_damage_mod *= (1 + v)
+                elif k == 'risk':
+                    skill_risk_mod *= (1 + v)
+                elif k == 'first_strike':
+                    skill_winrate_mod += 0.10  # 备战：先手优势+10%胜率
+        if hasattr(self.defender, 'get_combat_mods'):
+            def_mods = self.defender.get_combat_mods()
+            # 敌人用计/智谋相关debuff暂不处理
+
         action_info = self._get_action_info(player_action)
         atk_power = self._calc_power(self.attacker, side="attacker")
         def_power = self._calc_power(self.defender, side="defender")
@@ -131,10 +149,14 @@ class CombatSession:
         # 胜负判定
         player_won = effective_roll <= win_rate
 
-        # 撤退检查
+        # 撤退检查（含惊惧debuff导致撤退失败率+20%）
+        flee_fail_extra = 0
+        if hasattr(self.attacker, 'get_combat_mods'):
+            flee_fail_extra = self.attacker.get_combat_mods().get('flee_fail_chance', 0)
+
         fled = False
         if player_action == "撤退" and not player_won:
-            flee_chance = 0.35 + action_info.get("win_rate_mod", 0)
+            flee_chance = 0.35 + action_info.get("win_rate_mod", 0) - flee_fail_extra
             if random.random() < flee_chance:
                 fled = True
 
@@ -218,16 +240,16 @@ class CombatSession:
         }
         weather_bonus = weather_map.get(weather, 0)
 
-        # 伤势惩罚
-        if "重伤" in char.effects:
-            base *= 0.4
-        elif "负伤" in char.effects:
+        # 伤势惩罚（使用新的effects字典）
+        if hasattr(char, 'has_effect') and char.has_effect("负伤"):
             base *= 0.7
 
         # 阵营协同加成（玩家战斗时生效）
         if getattr(char, 'is_player', False) and hasattr(self, '_engine'):
             synergy = self._engine.get_faction_synergy_bonus()
-            base *= (1 + synergy * 0.02)  # 每点协同 +2% 基础战力
+            bond_bonus = self._engine.get_bond_synergy_bonus()
+            total_synergy = synergy + sum(bond_bonus.values())  # 羁绊加成按属性点估算为等效协同点
+            base *= (1 + total_synergy * 0.02)  # 每点协同 +2% 基础战力
 
         power = base * troop_factor * morale_factor * (1 + terrain_bonus + weather_bonus)
         return power

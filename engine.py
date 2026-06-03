@@ -259,7 +259,7 @@ class CombatEnemy:
         self.narrative = narrative
         self.rank = "杂兵"
         self.location = ""
-        self.effects = []
+        self.effects = {}
         self.skills = []
         self.active_skills = []
         self.passive_skills = []
@@ -349,6 +349,19 @@ class SanguoEngine:
         self.state.run_stats["highest_rank"] = config.INITIAL_RANK
         self.state.run_stats["highest_rank_idx"] = 0
         self.state.run_stats["total_exp_earned"] = 0
+        # Per-run karma stats — reset each game so death screen shows correct per-game data
+        self.state.run_stats["karma_wins"] = 0
+        self.state.run_stats["karma_upsets"] = 0
+        self.state.run_stats["karma_npc_recruited"] = 0
+        self.state.run_stats["karma_conversation"] = 0
+        self.state.run_stats["karma_history_events"] = 0
+        self.state.run_stats["karma_speech_wins"] = 0
+        self.state.run_stats["karma_rare_encounters"] = 0
+        self.state.run_stats["karma_intel"] = 0
+        self.state.run_stats["wins"] = 0
+        self.state.run_stats["losses"] = 0
+        self.state.run_stats["win_streak"] = 0
+        self.state.run_stats["lose_streak"] = 0
         self.state._reset_runtime_state()
         self._print_intro()
 
@@ -542,11 +555,35 @@ class SanguoEngine:
                 self.state.run_stats["karma_wins"] += bonus
             self.state.run_stats["win_streak"] = self.state.run_stats.get("win_streak", 0) + 1
             self.state.run_stats["lose_streak"] = 0
+
+            # ============ Buff/Debuff 触发：连胜/连败效果 ============
+            p = self.state.player
+            ws = self.state.run_stats.get("win_streak", 0)
+            ls = self.state.run_stats.get("lose_streak", 0)
+            # 3连胜：获得「高昂」
+            if ws == 3 and not p.has_effect("高昂"):
+                p.add_effect("高昂")
+                self._add_narrative("【三连胜！士气大振，获得「高昂」效果】")
+            # 2连胜：获得「备战」
+            if ws >= 2 and not p.has_effect("备战"):
+                p.add_effect("备战")
+                self._add_narrative("【连胜！军队得到充分「备战」】")
         else:
             # 战败
             self.state.run_stats["losses"] = self.state.run_stats.get("losses", 0) + 1
             self.state.run_stats["lose_streak"] = self.state.run_stats.get("lose_streak", 0) + 1
             self.state.run_stats["win_streak"] = 0
+
+            # 2连败：获得「士气低落」
+            ls = self.state.run_stats.get("lose_streak", 0)
+            p = self.state.player
+            if ls >= 2 and not p.has_effect("士气低落"):
+                p.add_effect("士气低落")
+                self._add_narrative("【连败…军队「士气低落」】")
+            # 3连败：叠加「疲惫」
+            if ls >= 3 and not p.has_effect("疲惫"):
+                p.add_effect("疲惫")
+                self._add_narrative("【三连败…士兵「疲惫」不堪】")
             self.state.player.food = max(0, self.state.player.food - session.attacker_damage)
             # 战斗中失败 -5 城市好感度
             self._modify_city_favorability(self.state.player.location, -config.CITY_FAVORABILITY["battle_loss_penalty"])
@@ -960,6 +997,12 @@ class SanguoEngine:
         except Exception:
             pass
 
+        # ============ Buff/Debuff 每月衰减 ============
+        effect_events = self.state.player.tick_effects()
+        for ev in effect_events:
+            if not self.silent:
+                print(ev)
+
         # ============ 战斗遭遇检查 ============
         combat_result = self._check_combat_encounter()
 
@@ -1270,15 +1313,16 @@ class SanguoEngine:
             "gold_after": p.gold,
             "campaign_active": bool(self.active_campaign),
         }
+        # 饥饿/断粮效果处理
         if p.food == 0:
-            if "饥饿" not in p.effects:
-                p.effects.append("饥饿")
+            if not p.has_effect("饥饿"):
+                p.add_effect("饥饿", turns=-1)  # 永久直到有食物
                 p.morale = max(0, p.morale - 15)
             # 饥饿每回合扣血
             p.take_damage(5)
         else:
-            if "饥饿" in p.effects:
-                p.effects.remove("饥饿")
+            if p.has_effect("饥饿"):
+                p.remove_effect("饥饿")
 
     def _get_equipment_karma_cap_bonus(self, stat):
         """获取装备提供的业力上限加成（额外+20每件传奇装备）"""
@@ -1830,9 +1874,10 @@ class SanguoEngine:
         self.pending_choice = None
 
     def show_death_screen(self, fragments_earned, months_survived,
-                          battles=0, npcs_recruited=None,
+                          battles=None, npcs_recruited=None,
                           highest_rank=None, events_triggered=0,
-                          exp_earned=0):
+                          exp_earned=0,
+                          run_stats_snapshot=None):
         """显示死亡界面（遗产商店 + 本局结算 + 转世叙事）"""
         from skills import SKILLS, can_learn_skill, get_skill
 
@@ -1840,6 +1885,12 @@ class SanguoEngine:
             npcs_recruited = []
         if highest_rank is None:
             highest_rank = self.state.player.rank if self.state.player else "散兵"
+        # Use run_stats_snapshot if provided, else self.state.run_stats
+        if battles is None:
+            if run_stats_snapshot is not None:
+                battles = run_stats_snapshot.get("battles_this_run", 0)
+            else:
+                battles = self.state.run_stats.get("battles_this_run", 0)
 
         p = self.state.player
         p.inheritance_fragments += fragments_earned
@@ -1928,7 +1979,7 @@ class SanguoEngine:
 
         carry_rates = config.REINCARNATION_CARRY_RATES
         caps = config.REINCARNATION_CAPS
-        rs = self.state.run_stats
+        rs = run_stats_snapshot if run_stats_snapshot is not None else self.state.run_stats
         karma_gain_display = []
         karma_gain_values = {}
 
@@ -1966,18 +2017,23 @@ class SanguoEngine:
                     parts.append(f"死{death_karma[stat]}")
                 karma_gain_display.append(f"{stat}+{' + '.join(parts)}")
 
+        # 保存业力数据（含 run_stats snapshot，跨 new_game 持久化）
+        karma_data["_last_run_stats"] = rs
         self._save_reincarnation(karma_data)
 
-        # 业力来源映射
+        # 业力来源映射：优先用传入的 run_stats_snapshot（当局数据），其次用 karma_data 持久化数据（跨 new_game 仍可读）
+        stats_src = run_stats_snapshot if run_stats_snapshot is not None else karma_data.get("_last_run_stats", {})
+        if not stats_src:
+            stats_src = rs  # 最后兜底用当前内存数据（仅限本局）
         karma_sources = {
-            "武": {"战斗胜利": rs.get("karma_wins", 0),
-                   "挑战强敌": rs.get("karma_upsets", 0)},
-            "魅": {"招募NPC": rs.get("karma_npc_recruited", 0),
-                    "深入交谈": rs.get("karma_conversation", 0) * 0.2},
-            "名": {"触发历史事件": rs.get("karma_history_events", 0)},
-            "智": {"舌战胜": rs.get("karma_speech_wins", 0) * 0.5,
-                   "索取情报": rs.get("karma_intel", 0) * 0.3},
-            "运": {"稀有遭遇": rs.get("karma_rare_encounters", 0) * 0.5},
+            "武": {"战斗胜利": stats_src.get("karma_wins", rs.get("karma_wins", 0)),
+                   "挑战强敌": stats_src.get("karma_upsets", rs.get("karma_upsets", 0))},
+            "魅": {"招募NPC": stats_src.get("karma_npc_recruited", rs.get("karma_npc_recruited", 0)),
+                    "深入交谈": stats_src.get("karma_conversation", rs.get("karma_conversation", 0)) * 0.2},
+            "名": {"触发历史事件": stats_src.get("karma_history_events", rs.get("karma_history_events", 0))},
+            "智": {"舌战胜": stats_src.get("karma_speech_wins", rs.get("karma_speech_wins", 0)) * 0.5,
+                   "索取情报": stats_src.get("karma_intel", rs.get("karma_intel", 0)) * 0.3},
+            "运": {"稀有遭遇": stats_src.get("karma_rare_encounters", rs.get("karma_rare_encounters", 0)) * 0.5},
         }
 
         def progress_bar(current, cap, width=10):

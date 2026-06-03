@@ -40,8 +40,10 @@ class Character:
         # 传承碎片
         self.inheritance_fragments = 0
 
-        # 状态效果
-        self.effects = []  # e.g. ["中毒", "重伤"]
+        # 状态效果（新：dict格式）
+        # 格式：{effect_id: {"turns": n, "stacks": n}}
+        # turn<0 表示永久/无限
+        self.effects = {}
 
         # NPC好感度（玩家独有）
         self.relations = {}  # {npc_name: value (-100~100)}
@@ -98,6 +100,9 @@ class Character:
             eq_bonuses = self.get_equipment_bonuses()
             base += eq_bonuses.get(stat, 0)
 
+        # Buff/Debuff属性修正
+        base += self.get_effect_stat_mod(stat)
+
         return base
 
     def get_stat(self, stat):
@@ -144,21 +149,111 @@ class Character:
 
     def take_damage(self, amount):
         self.hp = max(0, self.hp - amount)
-        if self.hp <= 30:
+        if self.hp <= 30 and not self.has_effect("负伤"):
             self.add_effect("负伤")
 
     def heal(self, amount):
         self.hp = min(100, self.hp + amount)
-        if self.hp > 30 and "负伤" in self.effects:
-            self.effects.remove("负伤")
+        if self.hp > 30 and self.has_effect("负伤"):
+            self.remove_effect("负伤")
 
-    def add_effect(self, effect):
-        if effect not in self.effects:
-            self.effects.append(effect)
+    def has_effect(self, effect_id):
+        """检查是否有某效果"""
+        return effect_id in self.effects
 
-    def remove_effect(self, effect):
-        if effect in self.effects:
-            self.effects.remove(effect)
+    def add_effect(self, effect_id, turns=None, stacks=None):
+        """添加状态效果，支持计时/叠加"""
+        from effects import get_effect
+        eff = get_effect(effect_id)
+        if not eff:
+            return
+        if effect_id not in self.effects:
+            duration_type = eff.get("duration_type", "timed")
+            if turns is None:
+                turns = eff.get("default_duration", 3)
+            self.effects[effect_id] = {
+                "turns": turns,
+                "stacks": stacks if stacks is not None else 1,
+                "duration_type": duration_type,
+            }
+        else:
+            # 可叠加效果，增加层数/回合
+            if eff.get("duration_type") == "stackable":
+                self.effects[effect_id]["stacks"] = self.effects[effect_id].get("stacks", 1) + 1
+                self.effects[effect_id]["turns"] = max(self.effects[effect_id]["turns"], turns or 3)
+
+    def remove_effect(self, effect_id):
+        if effect_id in self.effects:
+            del self.effects[effect_id]
+
+    def tick_effects(self):
+        """每月tick时调用，减少持续时间，返回触发的事件描述"""
+        from effects import get_effect
+        events = []
+        expired = []
+        for eid, data in list(self.effects.items()):
+            eff = get_effect(eid)
+            if not eff:
+                continue
+            dt = data.get("duration_type", "timed")
+            if dt == "timed":
+                data["turns"] -= 1
+                if data["turns"] <= 0:
+                    expired.append(eid)
+            elif dt == "permanent" or dt == "stackable":
+                # stackable自然消退
+                if data["turns"] > 0:
+                    data["turns"] -= 1
+                    if data["turns"] <= 0:
+                        expired.append(eid)
+            # 中毒: 每回合扣HP
+            if eid == "中毒" and eff.get("type") == "debuff":
+                dmg = 5 * data.get("stacks", 1)
+                self.hp = max(0, self.hp - dmg)
+                events.append(f"【中毒】毒素发作，HP-{dmg}")
+            # 疗伤: 每回合回HP
+            elif eid == "疗伤" and eff.get("type") == "buff":
+                heal_amt = 5
+                self.hp = min(100, self.hp + heal_amt)
+                events.append(f"【疗伤】伤势恢复，HP+{heal_amt}")
+        for eid in expired:
+            eff = get_effect(eid)
+            if eff:
+                events.append(f"【{eff['name']}】{eff.get('on_remove', '效果结束')}")
+            self.remove_effect(eid)
+        return events
+
+    def get_effect_stat_mod(self, stat):
+        """计算某属性的效果加成总和"""
+        from effects import get_effect
+        total = 0
+        for eid, data in self.effects.items():
+            eff = get_effect(eid)
+            if not eff or not eff.get("stat_mods"):
+                continue
+            mod = eff["stat_mods"].get(stat, 0)
+            stacks = data.get("stacks", 1)
+            duration_type = data.get("duration_type", "")
+            if duration_type == "stackable":
+                total += mod * stacks
+            else:
+                total += mod
+        return total
+
+    def get_combat_mods(self):
+        """获取战斗修正（所有active effects的combat_mods合并）"""
+        from effects import get_effect
+        result = {}
+        for eid, data in self.effects.items():
+            eff = get_effect(eid)
+            if not eff or not eff.get("combat_mods"):
+                continue
+            for k, v in eff["combat_mods"].items():
+                if k in result:
+                    result[k] += v
+                else:
+                    result[k] = v
+        return result
 
     def modify_relation(self, npc, delta):
         self.relations[npc] = self.relations.get(npc, 0) + delta
@@ -199,7 +294,7 @@ class Character:
             "active_skills": list(self.active_skills),
             "passive_skills": list(self.passive_skills),
             "inheritance_fragments": self.inheritance_fragments,
-            "effects": list(self.effects),
+            "effects": dict(self.effects),
             "relations": dict(self.relations),
             "gold": self.gold,
             "food": self.food,
@@ -220,7 +315,7 @@ class Character:
         c.active_skills = list(data.get("active_skills", []))
         c.passive_skills = list(data.get("passive_skills", []))
         c.inheritance_fragments = data.get("inheritance_fragments", 0)
-        c.effects = list(data.get("effects", []))
+        c.effects = dict(data.get("effects", {}))
         c.relations = dict(data.get("relations", {}))
         c.gold = data.get("gold", config.INITIAL_GOLD)
         c.food = data.get("food", config.INITIAL_FOOD)

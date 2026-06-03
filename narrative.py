@@ -129,12 +129,33 @@ def format_character_info(player):
     """格式化角色信息（手机优化版）"""
     stats = player.stats
     hp_bar = "".join(["✅" if i < player.hp else "⬜" for i in range(10)][:player.hp//10])
+
+    # 状态效果行
+    effect_lines = []
+    for eid, data in player.effects.items():
+        from effects import get_effect, format_effect_desc
+        eff = get_effect(eid)
+        if not eff:
+            continue
+        turns = data.get("turns", 0)
+        stacks = data.get("stacks", 1)
+        if turns < 0:
+            turns_str = "永久"
+        else:
+            turns_str = f"{turns}月"
+        icon = "🟢" if eff["type"] == "buff" else "🔴"
+        stacks_str = f"×{stacks}" if stacks > 1 else ""
+        effect_lines.append(f"{icon}{eff['name']}{stacks_str}({turns_str})")
+
+    effect_str = " | ".join(effect_lines) if effect_lines else ""
+
     return (
         f"【{player.name}】{player.rank}\n"
         f"⚔️ 武{stats.get('武',0)} 🧠 智{stats.get('智',0)} 📜 名{stats.get('名',0)} 💫 魅{stats.get('魅',0)} 🍀 运{stats.get('运',0)}\n"
         f"❤️ {player.hp}/100 {hp_bar} 💪{player.morale} ⚡{player.stamina}\n"
         f"💰{player.gold}金 🍖{player.food}粮 📈exp{player.exp}\n"
-        f"📍 {player.location}"
+        f"📍 {player.location}\n"
+        + (f"⚡状态: {effect_str}\n" if effect_str else "")
     )
 
 

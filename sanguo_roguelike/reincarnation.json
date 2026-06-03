@@ -1,11 +1,34 @@
 {
   "karma": {
-    "武": 3,
-    "智": 2,
-    "名": 0,
-    "魅": 0,
-    "运": 0
+    "武": 17,
+    "智": 8,
+    "名": 39,
+    "魅": 3,
+    "运": 4
   },
-  "total_deaths": 0,
-  "total_exp_earned": 0
+  "total_deaths": 3,
+  "total_exp_earned": 0,
+  "_last_run_stats": {
+    "battles_this_run": 19,
+    "wins": 11,
+    "losses": 8,
+    "win_streak": 0,
+    "lose_streak": 2,
+    "npcs_recruited_this_run": [
+      "江湖游侠"
+    ],
+    "events_triggered_this_run": 28,
+    "highest_rank": "司马",
+    "total_exp_earned": 0,
+    "karma_wins": 11.0,
+    "karma_npc_recruited": 0.6,
+    "karma_history_events": 28,
+    "karma_speech_wins": 0,
+    "karma_rare_encounters": 1,
+    "total_deaths": 2,
+    "highest_rank_idx": 5,
+    "karma_upsets": 0,
+    "karma_conversation": 0,
+    "karma_intel": 0
+  }
 }

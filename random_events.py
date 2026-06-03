@@ -292,7 +292,7 @@ def _fortune_event(state):
 def _injury_event(state):
     """受伤事件"""
     p = state.player
-    if "负伤" in p.effects:
+    if p.has_effect("负伤"):
         return None  # 已经负伤了不重复
 
     location = p.location
@@ -313,7 +313,7 @@ def _injury_event(state):
 def _poison_event(state):
     """中毒事件"""
     p = state.player
-    if "中毒" in p.effects:
+    if p.has_effect("中毒"):
         return None
 
     location = p.location
