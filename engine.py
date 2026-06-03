@@ -749,10 +749,19 @@ class SanguoEngine:
                     location_hint = f"「{loc}」"
 
             print(f"  {faction_icon}{type_icon} {npc_name} {location_hint}{leader_tag}{recruited_tag}")
-        # 显示阵营协同加成
-        synergy = self.get_faction_synergy_bonus()
-        if synergy > 0:
-            print(f"  🏅 阵营协同: 武+{synergy*2}（同阵营≥2人加成中）")
+        # 显示上阵阵容 + 协同加成
+        active_team = self.state.event_flags.get("active_team", [])
+        bench_list = self.state.event_flags.get("bench", [])
+        if active_team:
+            team_str = "、".join([f"{n}" for n in active_team])
+            synergy = self.get_faction_synergy_bonus()
+            bond_bonus = self.get_bond_synergy_bonus()
+            total_syn = synergy + sum(bond_bonus.values())
+            syn_str = f" (+{total_syn:.1f}协同)" if total_syn > 0 else ""
+            print(f"  ⚔️ 阵容: {team_str}（{len(active_team)}/{config.TEAM_CAPACITY}）{syn_str}")
+        if bench_list:
+            bench_str = "、".join([f"{n}" for n in bench_list])
+            print(f"  🪑 板凳: {bench_str}")
         # 显示已招募阵营统计
         factions = self.get_recruited_factions()
         if factions:
@@ -1352,16 +1361,20 @@ class SanguoEngine:
                 npc.location = new_loc
 
     def get_bond_synergy_bonus(self):
-        """计算羁绊协同加成（同羁绊≥2人触发，按比例计算加成）"""
+        """计算羁绊协同加成（仅上阵阵容成员生效）"""
         if not self.state:
             return {}
+        active_team = self.state.event_flags.get("active_team", [])
+        if not active_team:
+            return {}
+        active_set = set(active_team)
         bond_stat_bonus = {}
         for bond_id, bond_def in BOND_DEFINITIONS.items():
             members = bond_def["members"]
-            recruited = [m for m in members if self.state.event_flags.get(f"已招募_{m}", False)]
+            # 只统计上阵成员
+            recruited = [m for m in members if m in active_set]
             if len(recruited) < 2:
                 continue
-            # 按比例计算加成（2/3桃园三兄弟 → 获得66%的羁绊加成）
             ratio = len(recruited) / len(members)
             for stat, val in bond_def.get("synergy_bonus", {}).items():
                 bond_stat_bonus[stat] = bond_stat_bonus.get(stat, 0) + val * ratio
@@ -1388,15 +1401,20 @@ class SanguoEngine:
         return faction_synergy + int(bond_pct)
 
     def get_faction_synergy_bonus(self):
-        """计算阵营协同加成（招募的NPC中同阵营的人数）"""
+        """计算阵营协同加成（仅上阵阵容成员生效）"""
         if not self.state:
             return 0
+        active_team = self.state.event_flags.get("active_team", [])
+        if not active_team:
+            return 0
+        active_set = set(active_team)
         faction_counts = {"蜀": 0, "魏": 0, "吴": 0, "群雄": 0, "民间": 0}
         for name, npc in self.state.npcs.items():
-            if self.state.event_flags.get(f"已招募_{name}", False):
-                faction = getattr(npc, 'faction', '群雄')
-                if faction in faction_counts:
-                    faction_counts[faction] += 1
+            if name not in active_set:
+                continue
+            faction = getattr(npc, 'faction', '群雄')
+            if faction in faction_counts:
+                faction_counts[faction] += 1
         total = 0
         for count in faction_counts.values():
             if count >= 2:
@@ -1414,9 +1432,11 @@ class SanguoEngine:
         return {k: v for k, v in faction_counts.items() if v > 0}
 
     def _check_and_trigger_bond_discovery(self, npc_name):
-        """检测并触发羁绊发现提示"""
+        """检测并触发羁绊发现提示（仅限上阵阵容成员）"""
         if npc_name not in NPC_PRESETS:
             return
+        active_team = self.state.event_flags.get("active_team", [])
+        active_set = set(active_team)
         bonds = NPC_PRESETS[npc_name].get("bonds", [])
         discovered = []
         completed = []
@@ -1425,8 +1445,8 @@ class SanguoEngine:
                 continue
             bond = BOND_DEFINITIONS[bond_id]
             members = bond["members"]
-            # 统计当前已招募的成员数
-            recruited = sum(1 for m in members if self.state.event_flags.get(f"已招募_{m}", False))
+            # 统计当前已上阵的成员数（只看阵容）
+            recruited = sum(1 for m in members if m in active_set)
             # 当前招募后会是几人
             after_recruit = recruited + 1
             if after_recruit == len(members):
@@ -1706,6 +1726,28 @@ class SanguoEngine:
             self.state.event_flags[f"NPC类型_{npc.name}"] = npc.npc_type
             p.modify_relation(npc.name, 20)
 
+            # ========== 阵容容量处理 ==========
+            capacity = config.TEAM_CAPACITY
+            active_team = self.state.event_flags.get("active_team", [])
+            # 保证 active_team 不为 None 或空
+            if not active_team:
+                active_team = []
+            current_size = len(active_team)
+
+            if current_size < capacity:
+                # 有空位，直接入队
+                active_team.append(npc.name)
+                self.state.event_flags["active_team"] = active_team
+                team_msg = ""
+            else:
+                # 容量已满，此NPC坐板凳（不参与羁绊/战斗加成）
+                bench_list = self.state.event_flags.get("bench", [])
+                if bench_list is None:
+                    bench_list = []
+                bench_list.append(npc.name)
+                self.state.event_flags["bench"] = bench_list
+                team_msg = f"\n（当前阵容已满 {capacity}/{capacity}，{npc.name}暂入板凳，下月在城中等候）"
+
             # 记录招募 + 行为业力奖励
             if npc.name not in self.state.run_stats.get("npcs_recruited_this_run", []):
                 self.state.run_stats.setdefault("npcs_recruited_this_run", []).append(npc.name)
@@ -1743,7 +1785,7 @@ class SanguoEngine:
                     gift_msg = f"\n「你我共事，我有一技相赠——」\n「此乃'{skill.name}'，愿你善用之。」\n（获得技能：{skill.name}）"
             # 羁绊发现检测
             self._check_and_trigger_bond_discovery(npc.name)
-            return True, f"\n{npc.name}点头应允，愿意加入麾下！\n（{npc.name}已加入队伍，好感度+20）{gift_msg}"
+            return True, f"\n{npc.name}点头应允，愿意加入麾下！\n（{npc.name}已加入队伍，好感度+20）{gift_msg}{team_msg}"
         else:
             penalty = -10 if strategy == "coerce" else -5
             p.modify_relation(npc.name, penalty)

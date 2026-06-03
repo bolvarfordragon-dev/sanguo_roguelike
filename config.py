@@ -117,3 +117,6 @@ SAVE_DIR = "sanguo_roguelike/saves"
 UNLOCK_FILE = "sanguo_roguelike/unlocks.json"
 HISTORY_FILE = "sanguo_roguelike/history_records.jsonl"
 ACHIEVEMENTS_FILE = "sanguo_roguelike/achievements.json"
+
+# ============ 阵容系统 ============
+TEAM_CAPACITY = 4  # 初始阵容容量（上限4人，超出需替换板凳）
