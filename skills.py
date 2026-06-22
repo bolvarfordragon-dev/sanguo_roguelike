@@ -156,6 +156,29 @@ SKILLS = {
         skill_type="active",
         cost=0,
     ),
+
+    # === 战役赠送技能（F1: 修复赤壁/官渡/讨董 战役奖励不可达）===
+    "bingfa_taolue": Skill(
+        skill_id="bingfa_taolue",
+        name="兵法韬略",
+        desc="战斗经验+20%",
+        skill_type="passive",
+        cost=0,
+    ),
+    "fire_strategy": Skill(
+        skill_id="fire_strategy",
+        name="火攻之计",
+        desc="对敌军施加「火攻」状态",
+        skill_type="active",
+        cost=0,
+    ),
+    "kurou_ji": Skill(
+        skill_id="kurou_ji",
+        name="苦肉计",
+        desc="牺牲HP换敌军大混乱",
+        skill_type="active",
+        cost=0,
+    ),
 }
 
 

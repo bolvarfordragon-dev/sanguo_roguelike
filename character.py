@@ -214,7 +214,7 @@ class Character:
             # 疗伤: 每回合回HP
             elif eid == "疗伤" and eff.get("type") == "buff":
                 heal_amt = 5
-                self.hp = min(100, self.hp + heal_amt)
+                self.heal(heal_amt)  # F2: 用 heal() 而非直接赋值，让 heal() 内置的 HP>30 自动移除「负伤」逻辑生效（对齐 engine.py P-B 注释意图）
                 events.append(f"【疗伤】伤势恢复，HP+{heal_amt}")
         for eid in expired:
             eff = get_effect(eid)

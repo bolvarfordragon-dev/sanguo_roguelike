@@ -870,9 +870,8 @@ class SanguoEngine:
                 flag = f"campaign_{campaign.id}_resolved"
                 self.state.event_flags[flag] = True
                 self.state.event_flags[f"campaign_{campaign.id}_completed"] = True
-                # Award one of the rewards
-                if campaign.rewards:
-                    reward = campaign.rewards[0]
+                # Award all rewards (F1: 修复多奖励路径 — 原代码只发 rewards[0])
+                for reward in campaign.rewards:
                     if reward["type"] == "equipment":
                         eq = dict(reward)
                         eq.pop("type")
