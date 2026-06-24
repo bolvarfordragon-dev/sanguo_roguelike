@@ -378,6 +378,20 @@ class SanguoAPI:
             return None
         return dict(self.engine.pending_equipment)
 
+    def _get_pending_campaign(self):
+        """Return pending campaign intro data, if any."""
+        c = self.engine.pending_campaign
+        if not c:
+            return None
+        return {
+            "id": c.id,
+            "name": c.name,
+            "description": c.description,
+            "duration": c.duration,
+            "rewards": c.rewards,
+            "side_choice": c.side_choice,
+        }
+
     def _get_achievements_data(self):
         """Return achievements data for the UI panel."""
         unlocked_ids = load_achievements(config.ACHIEVEMENTS_FILE)

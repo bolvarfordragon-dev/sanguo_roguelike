@@ -494,6 +494,9 @@ class SanguoEngine:
             # 胜利：经验 + 名望 + 战利品
             self.state.player.food = max(0, self.state.player.food - session.attacker_damage)
             exp_gain = 30 + session.defender_damage // 8
+            # 兵法韬略（F1.5）：被动 +20% 经验
+            if "bingfa_taolue" in self.state.player.passive_skills:
+                exp_gain = int(exp_gain * 1.2)
             self.state.player.exp += exp_gain
             self.state.player.modify_stat("名", 2)
 
@@ -588,6 +591,9 @@ class SanguoEngine:
             # 战斗中失败 -5 城市好感度
             self._modify_city_favorability(self.state.player.location, -config.CITY_FAVORABILITY["battle_loss_penalty"])
             self.state.player.morale = max(10, self.state.player.morale - 15)
+            # F3: 「士气低落」debuff → 额外 -5 士气（此前为孤儿）
+            if self.state.player.has_effect("士气低落"):
+                self.state.player.morale = max(0, self.state.player.morale - 5)
             if session.attacker_damage > session.defender_damage * 2:
                 self.state.player.take_damage(random.randint(10, 30))
             narrative = session.get_full_narrative()
@@ -1332,6 +1338,12 @@ class SanguoEngine:
             if p.has_effect("饥饿"):
                 p.remove_effect("饥饿")
 
+        # ─────────── P-B (v3.7): 自动启动「疗伤」effect ───────────
+        # 解锁孤儿 effect: HP<30 触发「负伤」时，自动获得「疗伤」(4月)
+        # 4 月内累计 +20 HP，使 HP 越过 30 阈值 → heal() 内自动移除「负伤」
+        if p.has_effect("负伤") and not p.has_effect("疗伤"):
+            p.add_effect("疗伤", turns=4)
+
     def _get_equipment_karma_cap_bonus(self, stat):
         """获取装备提供的业力上限加成（额外+20每件传奇装备）"""
         if not self.state or not self.state.player:
@@ -2036,9 +2048,9 @@ class SanguoEngine:
             "运": int(rs.get("karma_rare_encounters", 0) * 0.5),
         }
 
-        # 死亡属性微调（5%，作为行为贡献的补充）
+        # 死亡属性微调（1%，作为行为贡献的补充）
         death_karma = {
-            stat: int(p.stats.get(stat, 0) * 0.05)
+            stat: int(p.stats.get(stat, 0) * 0.01)
             for stat in ["武", "智", "名", "魅", "运"]
         }
 

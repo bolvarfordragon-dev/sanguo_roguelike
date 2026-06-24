@@ -98,6 +98,17 @@ class CombatSession:
             elif active_skill == "dragon_valor":
                 # 龙胆：HP>50时武力+15（通过get_effective_stat处理，不在这里做额外操作）
                 pass
+            elif active_skill == "fire_strategy":
+                # F1.5 火攻之计：对敌军施加「火攻」状态（3月）
+                if hasattr(self.defender, 'add_effect') and not self.defender.has_effect("火攻"):
+                    self.defender.add_effect("火攻")
+                    self.add_narrative(f"【火攻】你军火攻敌军，{self.defender.name}陷入火海！")
+            elif active_skill == "kurou_ji":
+                # F1.5 苦肉计：自损HP-15换敌军大混乱（2月）
+                self.attacker.hp = max(1, self.attacker.hp - 15)
+                if hasattr(self.defender, 'add_effect') and not self.defender.has_effect("大混乱"):
+                    self.defender.add_effect("大混乱")
+                    self.add_narrative(f"【苦肉计】你佯装受创，敌军中计大乱！")
 
         # Buff/Debuff 战斗效果（主动技能处理后，action_info使用前应用）
         if hasattr(self.attacker, 'get_combat_mods'):
