@@ -1400,7 +1400,12 @@ async function dismissMonthlyReport() {
 const TUTORIAL_KEY = 'sanguo_tutorial_v1';
 
 function getTutorialStep() {
-    try { return parseInt(localStorage.getItem(TUTORIAL_KEY) || '0', 10); } catch(e) { return 0; }
+    // Default to 99 (skipped) — users can re-enable by clearing localStorage key
+    try {
+        const v = localStorage.getItem(TUTORIAL_KEY);
+        if (v === null) return 99;  // never seen: skip
+        return parseInt(v, 10);
+    } catch(e) { return 99; }
 }
 function setTutorialStep(step) {
     try { localStorage.setItem(TUTORIAL_KEY, String(step)); } catch(e) {}
@@ -1468,7 +1473,7 @@ function showTutorialStep(step) {
 
     // Darken everything except target (clickable: tapping dark area skips tutorial)
     const darkDiv = document.createElement('div');
-    darkDiv.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.55);cursor:pointer;';
+    darkDiv.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.3);cursor:pointer;';
     darkDiv.onclick = () => {
         completeTutorial();
         if (tutorialOverlay) tutorialOverlay.remove();

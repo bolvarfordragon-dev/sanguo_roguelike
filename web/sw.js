@@ -11,7 +11,7 @@
  *   - Versioned via CACHE_NAME; bumping the name forces a clean re-cache on update.
  */
 
-const CACHE_NAME = 'sanguo-mvp-v4';
+const CACHE_NAME = 'sanguo-mvp-v5';
 const STATIC_ASSETS = [
   './',
   './index.html',
