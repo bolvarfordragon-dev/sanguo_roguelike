@@ -1,0 +1,52 @@
+# 三国文字Roguelike — systemd service（不用 Docker 的备选方案）
+#
+# 部署步骤：
+#   1. 准备环境：
+#      sudo apt update && sudo apt install -y python3-pip python3-venv
+#      cd /opt && sudo git clone <repo> sanguo_roguelike
+#      cd /opt/sanguo_roguelike && sudo python3 -m venv venv
+#      sudo venv/bin/pip install -r requirements.txt gunicorn
+#
+#   2. 安装 service：
+#      sudo cp deploy/systemd/sanguo.service /etc/systemd/system/
+#      sudo systemctl daemon-reload
+#      sudo systemctl enable sanguo
+#      sudo systemctl start sanguo
+#
+#   3. 查看状态 / 日志：
+#      sudo systemctl status sanguo
+#      sudo journalctl -u sanguo -f
+
+[Unit]
+Description=Sanguo Roguelike Web Server
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+
+# 部署路径（按需修改）
+WorkingDirectory=/opt/sanguo_roguelike
+Environment="PORT=5000"
+Environment="TZ=Asia/Shanghai"
+
+# 启动命令
+ExecStart=/opt/sanguo_roguelike/venv/bin/gunicorn \
+    --bind 0.0.0.0:5000 \
+    --workers 1 \
+    --threads 4 \
+    --access-logfile - \
+    --error-logfile - \
+    --timeout 30 \
+    wsgi:app
+
+# 重启策略
+Restart=always
+RestartSec=3
+
+# 资源限制
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target

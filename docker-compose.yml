@@ -1,0 +1,34 @@
+# 三国文字Roguelike — 本地/服务器一键部署
+# 使用方法：
+#   1. 把整个项目传到服务器（git clone 或 scp）
+#   2. cd /path/to/sanguo_roguelike
+#   3. docker compose up -d --build
+#   4. 访问 http://<server-ip>:5000
+#
+# 配合 nginx 反代请看 deploy/nginx/sanguo.conf
+
+services:
+  sanguo:
+    build: .
+    container_name: sanguo-roguelike
+    restart: unless-stopped
+    ports:
+      - "5000:5000"     # 直连端口；用 nginx 时可以删掉这一行
+    environment:
+      - TZ=Asia/Shanghai
+    volumes:
+      # 持久化游戏存档和转世数据（容器删了不丢）
+      - ./saves:/app/saves
+      - ./reincarnation.json:/app/reincarnation.json
+      - ./achievements.json:/app/achievements.json
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/api/state', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

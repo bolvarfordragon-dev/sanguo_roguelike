@@ -1,0 +1,39 @@
+# 不打包进镜像的文件
+.git
+.gitignore
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info
+
+# 测试与开发文件
+test_*.py
+test_*.json
+test_sim*.py
+t100.py
+test_20pct.py
+replay_*.py
+playthrough.py
+*.log
+
+# 部署目录（部署文件不进镜像，但 scripts/ 里的要用）
+deploy/
+PLAN_*.md
+ANALYSIS_*.md
+REGRESSION_*.md
+README.md
+
+# 报告
+reports/
+
+# 数据文件（容器内会重新生成）
+saves/
+reincarnation.json
+achievements.json
+
+# 系统
+.DS_Store
+.idea/
+.vscode/
