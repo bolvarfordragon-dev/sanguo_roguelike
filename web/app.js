@@ -1,5 +1,18 @@
 /* 三国文字Roguelike - Web UI Client (v3 with campaigns, choices, equipment) */
-const API = '/api';
+
+// ── API base URL resolution ──────────────────────────
+// Priority:
+//   1. <meta name="api-base-url" content="..."> in index.html
+//   2. ?api=... query string (handy for testing)
+//   3. window.location.origin (same-origin — Railway / VPS / localhost)
+const _META_API = document.querySelector('meta[name="api-base-url"]');
+const _QUERY_API = new URLSearchParams(window.location.search).get('api');
+const API_BASE =
+    (_META_API && _META_API.content && _META_API.content.trim()) ||
+    (_QUERY_API && _QUERY_API.trim()) ||
+    window.location.origin;
+const API = API_BASE.replace(/\/$/, '') + '/api';
+
 const SAVE_KEY = 'sanguo_game_v1';
 
 let currentState = null;
@@ -932,13 +945,13 @@ function renderMapView(state, panel) {
 
     let html = '';
     // Exploration progress
-    const visited = map.visited_cities || [];
+    const visitedCities = map.visited_cities || [];
     const total = map.total_cities || 1;
     const pct = map.explore_pct || 0;
     html += `<div style="padding:6px 4px;background:#0f1a0f;border-radius:6px;border:1px solid #2e8b57;margin-bottom:8px">
         <div style="display:flex;justify-content:space-between;font-size:12px;color:#88cc88;margin-bottom:4px">
             <span>📍 探索进度</span>
-            <span>${visited.length}/${total} 城</span>
+            <span>${visitedCities.length}/${total} 城</span>
         </div>
         <div style="height:6px;background:#1a2a1a;border-radius:3px;overflow:hidden">
             <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#2e8b57,#66cc88);border-radius:3px;transition:width 0.4s"></div>
