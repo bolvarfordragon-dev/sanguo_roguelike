@@ -54,18 +54,27 @@ function showLoading(show) {
 // ── API Calls ────────────────────────────────────────
 async function callAPI(method, endpoint, body) {
     showLoading(true);
-    const res = await fetch(`${API}${endpoint}`, {
-        method,
-        headers: body ? { 'Content-Type': 'application/json' } : {},
-        body: body ? JSON.stringify(body) : undefined,
-    });
-    const data = await res.json();
-    showLoading(false);
-    // Auto-save after every API call (if valid game state)
-    if (data && data.game_status && data.game_status !== 'error') {
-        saveGame(data);
+    // 5s safety: hide loading even if fetch hangs
+    const safetyTimer = setTimeout(() => showLoading(false), 5000);
+    try {
+        const res = await fetch(`${API}${endpoint}`, {
+            method,
+            headers: body ? { 'Content-Type': 'application/json' } : {},
+            body: body ? JSON.stringify(body) : undefined,
+        });
+        const data = await res.json();
+        // Auto-save after every API call (if valid game state)
+        if (data && data.game_status && data.game_status !== 'error') {
+            saveGame(data);
+        }
+        return data;
+    } catch (err) {
+        console.error('API call failed:', method, endpoint, err);
+        throw err;
+    } finally {
+        clearTimeout(safetyTimer);
+        showLoading(false);
     }
-    return data;
 }
 
 async function apiGetState() {
@@ -1457,9 +1466,13 @@ function showTutorialStep(step) {
     tutorialOverlay.id = 'tutorial-overlay';
     tutorialOverlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9990;pointer-events:none;';
 
-    // Darken everything except target
+    // Darken everything except target (clickable: tapping dark area skips tutorial)
     const darkDiv = document.createElement('div');
-    darkDiv.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.65);';
+    darkDiv.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.55);cursor:pointer;';
+    darkDiv.onclick = () => {
+        completeTutorial();
+        if (tutorialOverlay) tutorialOverlay.remove();
+    };
     tutorialOverlay.appendChild(darkDiv);
 
     // Spotlight: cut out the target element
@@ -1520,6 +1533,18 @@ function showTutorialStep(step) {
 function startTutorialIfNeeded() {
     const step = getTutorialStep();
     if (step >= 99 || step >= TUTORIAL_STEPS.length) return;
+    // Only start tutorial on game-screen (not on start-screen)
+    const gameScreen = document.getElementById('game-screen');
+    if (!gameScreen || !gameScreen.classList.contains('active')) {
+        // Wait for player to enter game
+        const waitForGame = setInterval(() => {
+            if (gameScreen && gameScreen.classList.contains('active')) {
+                clearInterval(waitForGame);
+                showTutorialStep(step);
+            }
+        }, 500);
+        return;
+    }
     // Wait for DOM to be ready
     setTimeout(() => showTutorialStep(step), 800);
 }
