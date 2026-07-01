@@ -11,21 +11,67 @@
     --text: #e8d5a3;
     --text-dim: #8a7a5a;
     --green: #2e8b57;
+    /* iPhone safe-area CSS variables (iOS 11+).
+       These resolve to actual notch/home-indicator insets on iPhone,
+       and to 0 on Android/desktop. Use env() in paddings below. */
+    --safe-top:    env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-left:   env(safe-area-inset-left, 0px);
+    --safe-right:  env(safe-area-inset-right, 0px);
 }
 
 body {
     font-family: 'Noto Serif SC', 'SimSun', serif;
     background: var(--bg);
     color: var(--text);
+    /* iOS overscroll background */
+    background-attachment: fixed;
+    /* Account for notch + home indicator in the global safe area */
+    padding-top:    var(--safe-top);
+    padding-bottom: var(--safe-bottom);
+    padding-left:   var(--safe-left);
+    padding-right:  var(--safe-right);
     min-height: 100vh;
+    min-height: 100dvh; /* dynamic viewport on mobile Safari */
     display: flex;
     justify-content: center;
+    /* Prevent rubber-band scroll on iOS PWA */
+    overscroll-behavior: none;
+    -webkit-tap-highlight-color: transparent;
 }
 
-#app { width: 100%; max-width: 480px; min-height: 100vh; display: flex; flex-direction: column; }
+#app {
+    width: 100%;
+    max-width: 480px;
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+}
 
-.screen { display: none; flex-direction: column; min-height: 100vh; }
+.screen { display: none; flex-direction: column; min-height: 100vh; min-height: 100dvh; }
 .screen.active { display: flex; }
+
+/* iOS standalone PWA: extend under the status bar (top safe area).
+   The .top-bar lives inside #app, so its background should reach
+   up to the top of the viewport. We add safe-top padding so the
+   time / rank / name content isn't hidden under the notch. */
+.top-bar { padding-top: calc(8px + var(--safe-top)); }
+
+/* Bottom nav: clear the iOS home indicator. */
+.bottom-nav {
+    padding-bottom: calc(8px + var(--safe-bottom));
+}
+
+/* Bottom sheet overlay: respect safe area when sheet is at the bottom. */
+.bottom-sheet {
+    padding-bottom: calc(16px + var(--safe-bottom));
+    padding-left:  var(--safe-left);
+    padding-right: var(--safe-right);
+}
+
+/* Pull-to-refresh: reserve a small safe zone at top of narrative area. */
+#narrative-area { padding-top: 0; }
 
 /* Start Screen */
 #start-screen { justify-content: center; align-items: center; gap: 40px; padding: 40px; }

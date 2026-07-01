@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+*.swp
+*.swo
+*~
+
+# Logs and runtime artifacts
+*.log
+nohup.out
+
+# Experimental engine patches / backups (kept locally for replay only)
+engine.py.applied_pb
+engine.py.applied_pb_holdout
+engine.py.applied_pb_v12
+engine.py.bak.v3.7_pre_pb
+engine.py.bak.*
+
+# User save data (state files, not source code)
+/reincarnation.json
+/achievements.json
+/saves/
+
+# Auto-generated audit / daily backlog reports (cron output, not source)
+/reports/
+
+# Build / deploy (Docker artifacts)
+/.dockerignore.bak
