@@ -267,6 +267,11 @@ function updateStats(state) {
     document.getElementById('bar-stamina').style.width = p.stamina + '%';
     document.getElementById('val-gold').textContent = p.gold;
     document.getElementById('val-food').textContent = p.food;
+    const troopsEl = document.getElementById('val-troops');
+    if (troopsEl) {
+        const cap = p.troop_cap != null ? p.troop_cap : '';
+        troopsEl.textContent = cap !== '' ? `${p.troops}/${cap}` : p.troops;
+    }
     document.getElementById('val-exp').textContent = p.exp;
 
     const stats = p.stats;
@@ -664,11 +669,16 @@ function renderTavernChoice(state, panel) {
 
 function renderMarket(state, panel) {
     const md = state.market_data;
+    const p = state.player || {};
+    const cap = p.troop_cap != null ? p.troop_cap : '';
     panel.innerHTML = `
-        <div class="market-info">💰 金：${md.player_gold} | 🍖 粮草：${md.player_food}</div>
+        <div class="market-info">💰 金：${md.player_gold} | 🍖 粮草：${md.player_food} | 🫡 兵力：${p.troops != null ? p.troops : '?'}${cap!==''?'/'+cap:''}</div>
         <div class="action-row">
             <button class="action-btn" onclick="doMarket('buy')">🏪 买粮草<div class="btn-sub">10金 → 15粮</div></button>
             <button class="action-btn" onclick="doMarket('sell')">💰 卖粮草<div class="btn-sub">15粮 → 8金</div></button>
+        </div>
+        <div class="action-row" style="margin-top:6px">
+            <button class="action-btn primary" onclick="doRecruitTroops()">🫡 征兵<div class="btn-sub">10金+8粮 → +10兵</div></button>
         </div>
         <div class="action-row" style="margin-top:6px">
             <button class="action-btn danger" onclick="doMarket('leave')">🚶 离开市集</button>
@@ -756,6 +766,7 @@ function renderNormal(state, panel) {
     let html = '<div class="action-row city-actions">';
     html += `<button class="action-btn market-btn" onclick="doMarketAuto()">🏪 市集<div class="btn-sub">买卖粮草</div></button>`;
     html += `<button class="action-btn tavern-btn" onclick="doVisitTavern()">🍶 酒馆<div class="btn-sub">拜访/打听</div></button>`;
+    html += `<button class="action-btn team-btn" onclick="doShowTeam()">👥 队友<div class="btn-sub">查看麾下</div></button>`;
     html += `<button class="action-btn intel-btn" onclick="doIntelAuto()">📰 情报<div class="btn-sub">20金打听NPC</div></button>`;
     html += `<button class="action-btn map-btn" onclick="doShowMap()">🗺️ 地图<div class="btn-sub">查看地图</div></button>`;
     html += `<button class="action-btn history-btn" onclick="doShowHistory()">📜 战报<div class="btn-sub">历史记录</div></button>`;
@@ -1205,6 +1216,50 @@ async function doTavernCancel() {
     const state = await apiTavernChoice(0);
     if (!state || state.game_status === 'error') return;
     applyState(state);
+}
+
+async function apiRecruitTroops() {
+    return callAPI('POST', '/recruit_troops');
+}
+
+async function doRecruitTroops() {
+    const state = await apiRecruitTroops();
+    if (!state || state.game_status === 'error') return;
+    applyState(state);
+    // 征兵后仍留在市集面板（若仍在市集）
+    const panel = document.getElementById('action-panel');
+    if (panel && state.ui_state === 'market') renderMarket(state, panel);
+}
+
+function doShowTeam() {
+    const panel = document.getElementById('action-panel');
+    if (panel) renderTeamView(currentState, panel);
+}
+
+function renderTeamView(state, panel) {
+    const team = (state && state.team) || { members: [], capacity: 4, active_count: 0 };
+    const members = team.members || [];
+    let html = `<div class="tavern-header">👥 麣下队友（上阵 ${team.active_count}/${team.capacity}）</div>`;
+    if (members.length === 0) {
+        html += `<div style="padding:12px;color:#8a7840;font-size:13px">尚无队友。前往酒馆拜访名士，或在旅途遭遇后招揽将才。</div>`;
+    } else {
+        html += '<div class="team-list">';
+        members.forEach(m => {
+            const s = m.stats || {};
+            const statStr = ['武','智','名','魅'].filter(k => s[k] != null).map(k => `${k}${s[k]}`).join(' ');
+            const benchTag = m.bench ? '<span class="team-bench">板凳</span>' : '<span class="team-active">上阵</span>';
+            html += `<div class="team-member">
+                <span class="team-icon">${m.icon || '👤'}</span>
+                <span class="team-name">${m.name}</span>
+                <span class="team-rank">${m.rank || ''}</span>
+                <span class="team-stats">${statStr}</span>
+                ${benchTag}
+            </div>`;
+        });
+        html += '</div>';
+    }
+    html += '<div class="action-row" style="margin-top:8px"><button class="action-btn" onclick="renderActionPanel(currentState)">← 返回</button></div>';
+    panel.innerHTML = html;
 }
 
 async function apiBuySkill(skillId) {

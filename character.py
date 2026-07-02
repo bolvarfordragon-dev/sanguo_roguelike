@@ -29,6 +29,7 @@ class Character:
         self.morale = config.MORALE_MAX
         self.gold = config.INITIAL_GOLD
         self.food = config.INITIAL_FOOD
+        self.troops = getattr(config, "INITIAL_TROOPS", 40)  # 持久兵力
 
         # 经验值
         self.exp = 0
@@ -298,6 +299,7 @@ class Character:
             "relations": dict(self.relations),
             "gold": self.gold,
             "food": self.food,
+            "troops": self.troops,
             "stamina": self.stamina,
             "morale": self.morale,
             "equipment": list(self.equipment),
@@ -319,6 +321,7 @@ class Character:
         c.relations = dict(data.get("relations", {}))
         c.gold = data.get("gold", config.INITIAL_GOLD)
         c.food = data.get("food", config.INITIAL_FOOD)
+        c.troops = data.get("troops", getattr(config, "INITIAL_TROOPS", 40))
         c.stamina = data.get("stamina", config.STAMINA_MAX)
         c.morale = data.get("morale", config.MORALE_MAX)
         c.equipment = list(data.get("equipment", []))

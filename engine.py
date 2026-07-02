@@ -410,7 +410,7 @@ class SanguoEngine:
             "attacker_morale": self.state.player.morale,
             "defender_morale": 80,
         }
-        ctx["attacker_troops"] = max(10, self.state.player.food // 2 + 30)
+        ctx["attacker_troops"] = max(config.MIN_TROOPS, self.state.player.troops)
         self.pending_combat = {
             "enemy": enemy,
             "ctx": ctx,
@@ -486,13 +486,14 @@ class SanguoEngine:
 
         # 处理战斗结果
         if session.fled:
-            # 撤退成功，扣减兵力
-            self.state.player.food = max(0, self.state.player.food - session.attacker_damage)
+            # 撤退成功，扣减兵力 + 损耗军需粮草
+            self.state.player.troops = max(config.MIN_TROOPS, self.state.player.troops - session.attacker_damage)
+            self.state.player.food = max(0, self.state.player.food - random.randint(5, 10))
             self.state.player.morale = max(20, self.state.player.morale - 8)
             self.state.player.exp += 5
         elif session.winner == self.state.player:
             # 胜利：经验 + 名望 + 战利品
-            self.state.player.food = max(0, self.state.player.food - session.attacker_damage)
+            self.state.player.troops = max(config.MIN_TROOPS, self.state.player.troops - session.attacker_damage)
             exp_gain = 30 + session.defender_damage // 8
             # 兵法韬略（F1.5）：被动 +20% 经验
             if "bingfa_taolue" in self.state.player.passive_skills:
@@ -500,11 +501,21 @@ class SanguoEngine:
             self.state.player.exp += exp_gain
             self.state.player.modify_stat("名", 2)
 
-            # 战利品：敌人遗落的资源
+            # 战利品：敌人遗落的资源（扣除行军军需后净收获较少）
             gold_loot = random.randint(8, 25)
-            food_loot = random.randint(15, 45)
+            food_loot = random.randint(15, 38)
+            supply_cost = random.randint(5, 12)  # 行军/作战消耗的粮草
             self.state.player.gold += gold_loot
-            self.state.player.food += food_loot
+            self.state.player.food = max(0, self.state.player.food + food_loot - supply_cost)
+
+            # 降兵：部分敌军投降归附（受官职兵力上限约束）
+            troop_cap = config.RANK_TROOP_CAP.get(self.state.player.rank, 60)
+            surrender = random.randint(0, 6)
+            if self.state.player.troops < troop_cap and surrender > 0:
+                gained = min(surrender, troop_cap - self.state.player.troops)
+                self.state.player.troops += gained
+            else:
+                gained = 0
 
             # 佣兵之道：战斗胜利额外+5金
             if "mercenary_spirit" in self.state.player.passive_skills:
@@ -532,7 +543,7 @@ class SanguoEngine:
                     self.pending_equipment = eq
                     equip_drop_msg = f"\n⚙️ 可选择替换装备「{eq['name']}」（装备槽已满）"
 
-            loot_line = f"\n📦 战利品：金+{gold_loot}，粮+{food_loot}{merc_msg}{frag_msg}{equip_drop_msg}"
+            loot_line = f"\n📦 战利品：金+{gold_loot}，粮+{food_loot}" + (f"，降兵+{gained}" if gained else "") + f"{merc_msg}{frag_msg}{equip_drop_msg}"
             narrative = session.get_full_narrative() + loot_line
             # Mark crit/fumble for UI effects
             self.pending_combat = self.pending_combat or {}
@@ -587,7 +598,7 @@ class SanguoEngine:
             if ls >= 3 and not p.has_effect("疲惫"):
                 p.add_effect("疲惫")
                 self._add_narrative("【三连败…士兵「疲惫」不堪】")
-            self.state.player.food = max(0, self.state.player.food - session.attacker_damage)
+            self.state.player.troops = max(config.MIN_TROOPS, self.state.player.troops - session.attacker_damage)
             # 战斗中失败 -5 城市好感度
             self._modify_city_favorability(self.state.player.location, -config.CITY_FAVORABILITY["battle_loss_penalty"])
             self.state.player.morale = max(10, self.state.player.morale - 15)
@@ -596,6 +607,9 @@ class SanguoEngine:
                 self.state.player.morale = max(0, self.state.player.morale - 5)
             if session.attacker_damage > session.defender_damage * 2:
                 self.state.player.take_damage(random.randint(10, 30))
+            # 战败：损耗军需粮草 + 必有人身之危（基础受伤）
+            self.state.player.food = max(0, self.state.player.food - random.randint(6, 12))
+            self.state.player.take_damage(random.randint(3, 8))
             narrative = session.get_full_narrative()
             self.pending_combat = self.pending_combat or {}
             self.pending_combat["crit"] = False
@@ -678,6 +692,29 @@ class SanguoEngine:
         else:
             print("请输入 'buy' 或 'sell' 或 'leave'。")
             return False
+
+    def recruit_troops(self):
+        """征兵：花费金+粮招募一批士兵（受官职兵力上限约束）
+        返回 (success: bool, message: str)
+        """
+        p = self.state.player
+        batch = config.TROOP_RECRUIT_BATCH
+        gold_cost = config.TROOP_RECRUIT_GOLD
+        food_cost = config.TROOP_RECRUIT_FOOD
+        cap = config.RANK_TROOP_CAP.get(p.rank, 60)
+
+        if p.troops >= cap:
+            return False, f"以你当前官职（{p.rank}），兵力已达上限 {cap}，无法再招。升官后可统领更多兵马。"
+        if p.gold < gold_cost:
+            return False, f"盘缠不足，征兵需 {gold_cost} 金，你只有 {p.gold} 金。"
+        if p.food < food_cost:
+            return False, f"粮草不足，征兵需 {food_cost} 粮（安家费），你只有 {p.food} 粮。"
+
+        gained = min(batch, cap - p.troops)
+        p.gold -= gold_cost
+        p.food -= food_cost
+        p.troops += gained
+        return True, f"🫡 征兵：花费 {gold_cost} 金、{food_cost} 粮，新招士兵 +{gained}。当前兵力 {p.troops}/{cap}。"
 
     def _get_city_danger(self, city, year):
         """计算城市危险等级（1-4：低/中/高/极危），考虑年份和地点"""
@@ -814,28 +851,42 @@ class SanguoEngine:
             move_cost = 8
         self.state.player.stamina = max(0, self.state.player.stamina - move_cost)
 
-        # 触发随机遭遇
+        # 触发随机遭遇（可能是叙事事件，也可能是真实战斗）
         encounter = self._check_travel_encounter(target_city)
 
         result = [
             travel_text,
             f"你于{self.state.get_time_str()}抵达{target_city}。",
             f"（消耗金{self.state.player.gold + cost}→{self.state.player.gold}，消耗体力{int(move_cost)}）",
-            "",
-            f"── {target_city} 城门 ──",
-            f"  🏪 市集 — 输入 'market' 买卖粮食",
-            f"  🍶 酒馆 — 输入 'intel' 打听消息（20金）",
         ]
         if encounter:
             result.append(f"\n{encounter}")
 
-        # 设置待处理市集状态（进城时提示）
-        self.pending_market = True
-
+        # 进城不再自动弹出市集/情报——玩家通过城中按钮自行选择
         return "\n".join(result)
 
     def _check_travel_encounter(self, target_city):
-        """检查旅途遭遇"""
+        """检查旅途遭遇：先判定是否遭遇真实战斗，否则可能触发叙事小事件"""
+        # ─── 旅途战斗遭遇（行军途中遭遇敌军）───
+        if not self.pending_combat:
+            combat_roll = random.randint(1, 100)
+            if combat_roll <= 18:
+                enemy = self._generate_combat_enemy()
+                if enemy:
+                    p = self.state.player
+                    ctx = {
+                        "attacker_troops": max(5, p.troops),
+                        "defender_troops": enemy.troops,
+                        "terrain": enemy.terrain,
+                        "weather": self._get_season_weather(),
+                        "location": p.location,
+                        "attacker_morale": p.morale,
+                        "defender_morale": enemy.morale,
+                    }
+                    self.pending_combat = {"enemy": enemy, "ctx": ctx}
+                    return f"行至半途，{enemy.narrative}"
+
+        # ─── 非战斗叙事小事件 ───
         roll = random.randint(1, 100)
         if roll <= 30:
             encounter_types = ["流民", "散兵", "商队", "山贼", "游侠"]
@@ -1192,7 +1243,7 @@ class SanguoEngine:
             return None
 
         ctx = {
-            "attacker_troops": max(10, p.food // 2 + 30),
+            "attacker_troops": max(config.MIN_TROOPS, p.troops),
             "defender_troops": enemy.troops,
             "terrain": enemy.terrain,
             "weather": self._get_season_weather(),
@@ -1310,38 +1361,55 @@ class SanguoEngine:
         elif p.morale > 85:
             p.morale = max(20, p.morale - 2)
         p.morale = max(0, p.morale)
-        p.food = max(0, p.food - 3)
+        # 基础粮耗 + 兵粮消耗（每 20 兵额外消耗 1 粮）
+        troop_food = p.troops // config.TROOP_FOOD_PER
+        total_food_cost = 3 + troop_food
+        p.food = max(0, p.food - total_food_cost)
         p.gold = max(0, p.gold - 1)
         # 官职月俸
         salary = config.RANK_SALARY.get(p.rank, 5)
         p.gold += salary
-        # 月度收支报告（粮草-3，体力恢复+25，金扣除+俸禄）
+        # 月度收支报告（粮草-基础-兵粮，体力恢复+25，金扣除+俸禄）
         campaign_penalty = 3 if self.active_campaign else 0
+        if campaign_penalty:
+            p.food = max(0, p.food - campaign_penalty)
         self.pending_monthly_report = {
-            "food_cost": 3 + campaign_penalty,
+            "food_cost": total_food_cost + campaign_penalty,
+            "troop_food": troop_food,
             "gold_spent": 1,
             "salary": salary,
-            "food_before": p.food + 3 + campaign_penalty,
+            "food_before": p.food + total_food_cost + campaign_penalty,
             "food_after": p.food,
             "gold_before": p.gold - salary + 1,
             "gold_after": p.gold,
             "campaign_active": bool(self.active_campaign),
         }
-        # 饥饿/断粮效果处理
+        # 断粮：饥饿扇血（逐月递增） + 逐月逃兵，且无法疗伤
         if p.food == 0:
             if not p.has_effect("饥饿"):
                 p.add_effect("饥饿", turns=-1)  # 永久直到有食物
                 p.morale = max(0, p.morale - 15)
-            # 饥饿每回合扣血
-            p.take_damage(5)
+            # 断粮时无法疗伤
+            if p.has_effect("疗伤"):
+                p.remove_effect("疗伤")
+            # 饥饿扣血：持续断粮伤害递增（饥饿月数越多越致命）
+            self.state.run_stats["starve_months"] = self.state.run_stats.get("starve_months", 0) + 1
+            starve_dmg = min(16, 6 + self.state.run_stats["starve_months"] * 1)
+            p.take_damage(starve_dmg)
+            # 断粮时士兵逃散（每月流失约 15%，下限亲兵）
+            if p.troops > config.MIN_TROOPS:
+                deserted = max(1, int(p.troops * 0.15))
+                p.troops = max(config.MIN_TROOPS, p.troops - deserted)
         else:
+            self.state.run_stats["starve_months"] = 0
             if p.has_effect("饥饿"):
                 p.remove_effect("饥饿")
 
         # ─────────── P-B (v3.7): 自动启动「疗伤」effect ───────────
         # 解锁孤儿 effect: HP<30 触发「负伤」时，自动获得「疗伤」(4月)
         # 4 月内累计 +20 HP，使 HP 越过 30 阈值 → heal() 内自动移除「负伤」
-        if p.has_effect("负伤") and not p.has_effect("疗伤"):
+        # （断粮时不会自愈：饥肠辘辘下无法养伤）
+        if p.food > 0 and p.has_effect("负伤") and not p.has_effect("疗伤"):
             p.add_effect("疗伤", turns=4)
 
     def _get_equipment_karma_cap_bonus(self, stat):
@@ -1618,23 +1686,28 @@ class SanguoEngine:
             if success:
                 self.state.event_flags[f"encounter_cd_{npc_name}"] = self.state.year
 
-        elif choice == "5":  # 交谈
-            info = self._get_npc_intel(npc)
+        elif choice == "5":  # 交谈（拉近好感，了解对方）
+            first_talk = not self.state.event_flags.get(f"talked_{npc_name}", False)
+            info = self._get_npc_smalltalk(npc, first_talk)
             print(info)
-            # 交谈后：下次招募该NPC时+10%成功率
-            self.state.event_flags[f"talked_{npc_name}"] = True
-            self.state.run_stats["karma_conversation"] = self.state.run_stats.get("karma_conversation", 0) + 0.2
-            self.pending_npc_encounter = None
-            return  # 保持遭遇状态，可以继续选择其他选项
+            if first_talk:
+                # 首次诚心交谈：好感度提升，且下次招募+10%
+                self.state.player.modify_relation(npc.name, 8)
+                self.state.event_flags[f"talked_{npc_name}"] = True
+                self.state.run_stats["karma_conversation"] = self.state.run_stats.get("karma_conversation", 0) + 0.2
+            # 保持遭遇状态，玩家可继续招募或离开
+            return
 
-        elif choice == "6":  # 索取情报
-            intel = self._get_npc_intel(npc, detailed=True)
+        elif choice == "6":  # 索取情报（打听天下局势/他人下落）
+            intel = self._get_npc_intel(npc)
             print(intel)
-            # 索取情报后：下次招募该NPC时+10%成功率
-            self.state.event_flags[f"intel_{npc_name}"] = True
-            self.state.run_stats["karma_intel"] = self.state.run_stats.get("karma_intel", 0) + 0.3
-            self.pending_npc_encounter = None
-            return  # 保持遭遇状态，可以继续选择其他选项
+            first_intel = not self.state.event_flags.get(f"intel_{npc_name}", False)
+            if first_intel:
+                self.state.event_flags[f"intel_{npc_name}"] = True
+                self.state.player.modify_relation(npc.name, 3)
+                self.state.run_stats["karma_intel"] = self.state.run_stats.get("karma_intel", 0) + 0.3
+            # 保持遭遇状态，玩家可继续招募或离开
+            return
 
         else:
             print("无效选择，请输入 1-7。")
@@ -1660,9 +1733,13 @@ class SanguoEngine:
 
         # ========== 名将分层基础率 ==========
         top_tier = {"刘备", "曹操"}
-        mid_tier = {"关羽", "张飞", "赵云", "吕布", "诸葛亮", "周瑜", "司马懿"}
+        # 枭雄/一方诸侯：胸怀大志或自立门户，极难招揽
+        warlord_tier = {"董卓", "袁绍", "袁术", "孙坚", "孙策", "吕布", "马腾", "公孙瓒", "刘表", "刘璋"}
+        mid_tier = {"关羽", "张飞", "赵云", "诸葛亮", "周瑜", "司马懿"}
         if npc.name in top_tier:
             base_rate = 0.30
+        elif npc.name in warlord_tier:
+            base_rate = 0.12
         elif npc.name in mid_tier:
             base_rate = 0.45
         else:
@@ -1728,7 +1805,11 @@ class SanguoEngine:
 
         final_rate = (base_rate + rank_mod + charisma_mod + npc_stat_mod
                      + rel_mod + strategy_mod + interaction_bonus)
-        final_rate = max(0.05, min(0.90, final_rate))
+        # 枭雄封顶：即使满加成，招揽成功率也不超过 40%
+        if npc.name in warlord_tier:
+            final_rate = max(0.05, min(0.40, final_rate))
+        else:
+            final_rate = max(0.05, min(0.90, final_rate))
 
         success = random.random() < final_rate
 
@@ -1808,8 +1889,29 @@ class SanguoEngine:
             }
             return False, msgs.get(strategy, "")
 
+    def _get_npc_smalltalk(self, npc, first_talk=True):
+        """交谈：了解对方的出身、志向、当前处境（拉近关系）"""
+        npc_type = getattr(npc, 'npc_type', '武将')
+        home = getattr(npc, 'home_base', None) or npc.location
+        # 属性化为口吻
+        wu, zhi, mei = npc.get_stat("武"), npc.get_stat("智"), npc.get_stat("魅")
+        if npc_type == "文官":
+            trait = "谈吐之间尽显智谋，胸中自有丘壑。"
+        elif wu >= 70:
+            trait = "一身武艺高强，谈及沙场事便神采飞扬。"
+        else:
+            trait = "举止从容，似有投明主之意。"
+        lines = [f"\n🍶 你与{npc.name}（{npc.rank}）保壶长谈。"]
+        lines.append(f"  • 籍贯之地：{home}")
+        lines.append(f"  • {trait}")
+        if first_talk:
+            lines.append(f"  一番交谈后，{npc.name}对你好感渐增。（好感+8，下次招募+10%）")
+        else:
+            lines.append(f"  你们又叙了叙旧。（好感已至上限，无额外提升）")
+        return "\n".join(lines)
+
     def _get_npc_intel(self, npc, detailed=False):
-        """获取 NPC 提供的情报"""
+        """索取情报：NPC透露天下其他人物的下落"""
         intel_list = []
         current_year = self.state.year
 
@@ -1818,14 +1920,17 @@ class SanguoEngine:
                 continue
             if not is_npc_active(other_name, current_year):
                 continue
+            # 已招募的不列入情报（已在麣下）
+            if self.state.event_flags.get(f"已招募_{other_name}", False):
+                continue
             loc = get_npc_location(other_name, current_year)
             if loc:
                 intel_list.append(f"{other_name}目前在{loc}")
 
         if not intel_list:
-            return f"\n{npc.name}告诉你：「天下纷乱，我亦不知他人下落。」"
+            return f"\n📰 {npc.name}告诉你：「天下纷乱，我亦不知他人下落。」"
 
-        info = [f"\n{npc.name}告诉你："]
+        info = [f"\n📰 {npc.name}为你透露天下局势："]
         for i, intel in enumerate(intel_list[:6], 1):
             info.append(f"  {i}. {intel}")
         return "\n".join(info)

@@ -88,7 +88,18 @@ class SanguoAPI:
         # Build narrative
         lines = []
         for key in ["mandatory", "conditionals", "random_events"]:
-            for evt in (result.get(key) or []):
+            val = result.get(key)
+            if not val:
+                evts = []
+            elif isinstance(val, dict):
+                evts = [val]
+            elif isinstance(val, list):
+                evts = val
+            else:
+                evts = []
+            for evt in evts:
+                    if not isinstance(evt, dict):
+                        continue
                     name = evt.get("name", "")
                     desc = evt.get("desc", "")
                     if name and desc:
@@ -268,6 +279,8 @@ class SanguoAPI:
                 "stamina": p.stamina,
                 "gold": p.gold,
                 "food": p.food,
+                "troops": getattr(p, "troops", 0),
+                "troop_cap": config.RANK_TROOP_CAP.get(p.rank, 60),
                 "exp": p.exp,
                 "rank_exp": config.RANK_EXP_REQUIRE.get(p.rank, 0),
                 "stats": dict(p.stats),
@@ -291,6 +304,7 @@ class SanguoAPI:
             "achievements": self._get_achievements_data(),
             "pending_achievements": [msg for msg in self.engine._pending_achievement_msgs],
             "city_favorability": self.engine.state.city_favorability,
+            "team": self._get_team_data(),
             "run_stats": dict(self.engine.state.run_stats),
             "run_history": self._get_history_data(),
             "pending_equipment": self._get_pending_equipment(),
@@ -303,6 +317,39 @@ class SanguoAPI:
             "active_campaign": self._get_active_campaign_data(),
             "pending_choice": self._get_pending_choice(),
             "next_event_preview": self._get_next_event_preview(),
+        }
+
+    def _get_team_data(self):
+        """Build recruited team roster (active + bench) for UI display."""
+        flags = self.engine.state.event_flags
+        active = flags.get("active_team") or []
+        bench = flags.get("bench") or []
+        npcs = self.engine.state.npcs
+
+        def describe(name, on_bench):
+            npc = npcs.get(name)
+            if npc is None:
+                return {"name": name, "rank": "", "npc_type": "武将",
+                        "stats": {}, "icon": "👤", "bench": on_bench}
+            npc_type = getattr(npc, "npc_type", "武将")
+            return {
+                "name": name,
+                "rank": getattr(npc, "rank", ""),
+                "npc_type": npc_type,
+                "icon": "⚔️" if npc_type == "武将" else "📚",
+                "stats": {
+                    "武": npc.get_stat("武"), "智": npc.get_stat("智"),
+                    "名": npc.get_stat("名"), "魅": npc.get_stat("魅"),
+                },
+                "relation": self.engine.state.player.get_relation(name),
+                "bench": on_bench,
+            }
+
+        members = [describe(n, False) for n in active] + [describe(n, True) for n in bench]
+        return {
+            "capacity": config.TEAM_CAPACITY,
+            "active_count": len(active),
+            "members": members,
         }
 
     def _get_active_campaign_data(self):
@@ -548,6 +595,15 @@ class SanguoAPI:
             self.engine.pending_market = False
         return self.get_state()
 
+    def recruit_troops(self):
+        """征兵：花金+粮招募一批士兵。"""
+        try:
+            success, msg = self.engine.recruit_troops()
+        except Exception as e:
+            msg = f"征兵失败：{e}"
+        self._add_narrative(msg)
+        return self.get_state()
+
     def show_intel(self):
         """Build intel data: NPC locations + paths (returns structured data)."""
         cost = 20
@@ -611,6 +667,9 @@ class SanguoAPI:
             if npc.hp <= 0:
                 continue
             if not is_npc_active(npc_name, current_year):
+                continue
+            # 已招募的NPC已在麣下，不再出现在酒馆
+            if self.engine.state.event_flags.get(f'已招募_{npc_name}', False):
                 continue
             npc_loc = get_npc_location(npc_name, current_year)
             if npc_loc == current_loc:
@@ -808,6 +867,10 @@ def market():
     data = request.json or {}
     cmd = data.get("cmd", "leave")
     return jsonify(api.market_action(cmd))
+
+@app.route("/api/recruit_troops", methods=["POST"])
+def recruit_troops():
+    return jsonify(api.recruit_troops())
 
 @app.route("/api/intel", methods=["POST"])
 def intel():
